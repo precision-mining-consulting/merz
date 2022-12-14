@@ -16,7 +16,7 @@ You may need administrator privileges.
 
 To use the tooling, a script is required within a Spry model. This script is packaged with the installer.
 
-1. Import a **Single Script** from the MERZ installation folder (`C:\Program Files\merz\MERZ.cs`)
+1. Import a **Single Script** from the MERZ installation folder (typically `C:\Users\<user>\AppData\Local\Programs\merz\MERZ.cs`)
 
 <p align="center">
 <img src="https://user-images.githubusercontent.com/13831379/202963751-5b338288-1ce6-4b38-92b0-8ba5f1b926ad.png"/>
