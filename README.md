@@ -19,7 +19,27 @@ To use the tooling, a script is required within a Spry model. This script is pac
 1. Import a **Single Script** from the MERZ installation folder (typically `C:\Users\<user>\AppData\Local\Programs\merz\MERZ.cs`)
 
 <p align="center">
-<img src="https://user-images.githubusercontent.com/13831379/202963751-5b338288-1ce6-4b38-92b0-8ba5f1b926ad.png"/>
+<img src="https://user-images.githubusercontent.com/13831379/207735098-093acb8a-6488-409a-8edb-39f7315d63c9.png"/>
+<br>
+<em>Use <code>%APPADATA%</code> to quickly navigate to AppData folder</em>
+</p>
+
+<p align="center">
+<img src="https://user-images.githubusercontent.com/13831379/207735202-e01211aa-0d54-4ac7-a8a8-bd194d7bc376.png"/>
+<br>
+<em>Navigate up one level to the AppData folder</em>
+</p>
+
+<p align="center">
+<img src="https://user-images.githubusercontent.com/13831379/207735291-a80a7964-1f93-48a5-ac0f-8fe5c029e9e6.png"/>
+<br>
+<em>Proceed to navigate to the typical merz installation folder</em>
+</p>
+
+<p align="center">
+<img src="https://user-images.githubusercontent.com/13831379/207735379-d8900a6e-0630-45bd-9ebb-e8439d67ef4d.png"/>
+<br>
+<em>Select the <code>Merz.cs</code> C# script</em>
 </p>
 
 2. After recompiling scripts, there will be a `Merz->Open()` script entry point:
