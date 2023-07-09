@@ -21,7 +21,7 @@ To use the tooling, a script is required within a Spry model. This script is pac
 <p align="center">
 <img src="https://user-images.githubusercontent.com/13831379/207735098-093acb8a-6488-409a-8edb-39f7315d63c9.png"/>
 <br>
-<em>Use <code>%APPADATA%</code> to quickly navigate to AppData folder</em>
+<em>Use <code>%APPDATA%</code> to quickly navigate to AppData folder</em>
 </p>
 
 <p align="center">
