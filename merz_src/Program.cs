@@ -211,10 +211,11 @@ namespace merz
                         Out.WriteLine("Current version: " + version);
                         Out.WriteLine("Latest version from GitHub: " + latestVersionStr);
                         if (Version.TryParse(version, out Version currentV) &&
-                            Version.TryParse(version, out Version latestV))
+                            Version.TryParse(latestVersionStr, out Version latestV))
                         {
                             if (latestV > currentV)
                             {
+                                Out.WriteLine("New version available within loop: " + latestVersionStr);
                                 form.Options.AddTextLabel($"New version available: {latestVersionStr}");
                                 string downloadLinkHtml = $"Download from GitHub: <a href=\"https://github.com/precision-mining-consulting/merz/releases/latest\">https://github.com/precision-mining-consulting/merz/releases/latest</a>";
 
