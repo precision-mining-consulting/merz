@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using PrecisionMining.Spry.Util.OptionsForm;
 using Progress = PrecisionMining.Spry.Util.UI;
 using PrecisionMining.Spry;
-
+using System.Threading.Tasks;
+using System.Net.Http;
+using System.Text.Json;
 namespace merz
 {
     public class Program
@@ -199,7 +201,27 @@ namespace merz
 
                     // Create the form
                     var form = OptionsForm.Create("Merz " + "V: " + version);
-                    var updateLabel = form.Options.AddTextLabel("");
+
+                    string latestGitHubTag = GetLatestGitHubVersionAsync().GetAwaiter().GetResult();
+                    if (!string.IsNullOrEmpty(latestGitHubTag))
+                    {
+                        string latestVersionStr = latestGitHubTag.TrimStart('v'); // "1.0.1"
+                        if (Version.TryParse(version, out Version currentV) &&
+                            Version.TryParse(latestVersionStr, out Version latestV))
+                        {
+                            if (latestV > currentV)
+                            {
+                                form.Options.AddTextLabel($"New version available: {latestVersionStr}");
+                                string downloadLinkHtml = $"Download from GitHub: <a href=\"https://github.com/precision-mining-consulting/merz/releases/latest\">https://github.com/precision-mining-consulting/merz/releases/latest</a>";
+
+                                form.Options.AddTextLabel(downloadLinkHtml, true);
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Could not parse versions for comparison. Current: '{version}', Latest from GitHub: '{latestVersionStr}'");
+                        }
+                    }
 
                     foreach (var grp in grps)
                     {
@@ -246,8 +268,30 @@ namespace merz
                 }
             });
             formThread.SetApartmentState(System.Threading.ApartmentState.STA);
+            formThread.IsBackground = true;
             formThread.Start();
 
+        }
+
+        private static async Task<string> GetLatestGitHubVersionAsync()
+        {
+            using (var httpClient = new HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("MerzVersionChecker/1.0"); // GitHub API requires a User-Agent
+                var response = await httpClient.GetAsync("https://api.github.com/repos/precision-mining-consulting/merz/releases/latest");
+                response.EnsureSuccessStatusCode(); // Throws if not successful
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                using (JsonDocument doc = JsonDocument.Parse(responseBody))
+                {
+                    JsonElement root = doc.RootElement;
+                    if (root.TryGetProperty("tag_name", out JsonElement tagNameElement))
+                    {
+                        return tagNameElement.GetString();
+                    }
+                }
+                throw new Exception("Could not find 'tag_name' in GitHub API response.");
+            }
         }
         static void LaunchSubFormInThread(List<EntryPoint> items)
         {
