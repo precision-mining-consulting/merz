@@ -203,10 +203,13 @@ namespace merz
                     var form = OptionsForm.Create("Merz " + "V: " + version);
 
                     string latestGitHubTag = GetLatestGitHubVersionAsync().GetAwaiter().GetResult();
+                    Out.WriteLine("Latest GitHub version: " + latestGitHubTag);
                     if (!string.IsNullOrEmpty(latestGitHubTag))
                     {
                         string latestVersionStr = latestGitHubTag.TrimStart('v'); // "1.0.1"
-
+                                                                                  //print the latest version and current version
+                        Out.WriteLine("Current version: " + version);
+                        Out.WriteLine("Latest version from GitHub: " + latestVersionStr);
                         if (Version.TryParse(version, out Version currentV) &&
                             Version.TryParse(version, out Version latestV))
                         {
