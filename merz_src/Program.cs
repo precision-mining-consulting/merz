@@ -180,13 +180,65 @@ namespace merz
 
         static List<EntryPoint> CollectEntryPmSpryToolsEntryPoints()
         {
-            Assembly assembly = _currentAssembly ?? Assembly.GetExecutingAssembly();
-            return assembly
-                .GetTypes()
-                .SelectMany(x => x.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-                .Where(x => x.GetCustomAttribute(typeof(PackAttribute), false) != null)
-                .Select(m => EntryPoint.FromAttrMethod(m))
-                .ToList();
+            var entryPoints = new List<EntryPoint>();
+            Assembly mainAssembly = _currentAssembly ?? Assembly.GetExecutingAssembly();
+
+            // Scan the main assembly (merz.exe)
+            if (mainAssembly != null)
+            {
+                entryPoints.AddRange(mainAssembly
+                    .GetTypes()
+                    .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                    .Where(m => m.GetCustomAttribute(typeof(PackAttribute), false) != null)
+                    .Select(m => EntryPoint.FromAttrMethod(m))
+                );
+            }
+
+            // Attempt to load and scan Scripts.dll
+            if (mainAssembly != null && !string.IsNullOrEmpty(mainAssembly.Location))
+            {
+                string baseDirectory = Path.GetDirectoryName(mainAssembly.Location);
+                string scriptsDllPath = Path.Combine(baseDirectory, "Scripts.dll"); // Assumes the DLL is named Scripts.dll
+
+                if (File.Exists(scriptsDllPath))
+                {
+                    try
+                    {
+                        Assembly scriptsAssembly = Assembly.LoadFrom(scriptsDllPath);
+                        if (scriptsAssembly != null)
+                        {
+                            entryPoints.AddRange(scriptsAssembly
+                                .GetTypes()
+                                .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                                .Where(m => m.GetCustomAttribute(typeof(PackAttribute), false) != null)
+                                .Select(m => EntryPoint.FromAttrMethod(m))
+                            );
+                            Console.WriteLine($"Successfully loaded and scanned: {scriptsAssembly.FullName}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Warning: Could not load or scan Scripts.dll from {scriptsDllPath}. Error: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Warning: Scripts.dll not found at {scriptsDllPath}. Entry points from it will not be loaded.");
+                }
+            }
+             else
+            {
+                Console.WriteLine("Warning: Main assembly location is unknown. Cannot determine path for Scripts.dll.");
+            }
+
+            if (!entryPoints.Any()) {
+                Console.WriteLine("No entry points found after scanning. The UI might be blank.");
+            }
+
+            // Ensure distinct entry points if there's a possibility of overlap or if PackAttribute is in a shared assembly
+            // This simple distinct might not be enough if EntryPoint objects are different instances but logically the same.
+            // A more robust distinct would use a custom IEqualityComparer or GroupBy.
+            return entryPoints.GroupBy(ep => $"{ep.group}_{ep.name}_{ep.subname}").Select(g => g.First()).ToList();
         }
 
         static void EntryPointForm(List<EntryPoint> entryPoints)
