@@ -180,13 +180,119 @@ namespace merz
 
         static List<EntryPoint> CollectEntryPmSpryToolsEntryPoints()
         {
-            Assembly assembly = _currentAssembly ?? Assembly.GetExecutingAssembly();
-            return assembly
-                .GetTypes()
-                .SelectMany(x => x.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-                .Where(x => x.GetCustomAttribute(typeof(PackAttribute), false) != null)
-                .Select(m => EntryPoint.FromAttrMethod(m))
-                .ToList();
+            var entryPoints = new List<EntryPoint>();
+            Assembly mainAssembly = _currentAssembly ?? Assembly.GetExecutingAssembly();
+
+            // Scan the main assembly (merz.exe)
+            if (mainAssembly != null)
+            {
+                try
+                {
+                    var typesFromMain = mainAssembly.GetTypes(); // This line can throw ReflectionTypeLoadException
+                    entryPoints.AddRange(typesFromMain
+                        .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                        .Where(m => m.GetCustomAttribute(typeof(PackAttribute), false) != null)
+                        .Select(m => EntryPoint.FromAttrMethod(m))
+                    );
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    Console.WriteLine($"Error: Could not load one or more types from main assembly ({mainAssembly.FullName}). See LoaderExceptions below:");
+                    if (ex.LoaderExceptions != null)
+                    {
+                        foreach (Exception loaderEx in ex.LoaderExceptions)
+                        {
+                            Console.WriteLine($"- LoaderException: {loaderEx?.Message}");
+                            if (loaderEx is FileNotFoundException fnfEx)
+                            {
+                                Console.WriteLine($"  Missing file: {fnfEx.FileName}");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("LoaderExceptions collection is null for main assembly.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"An unexpected error occurred while processing types from main assembly ({mainAssembly.FullName}): {ex.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Warning: Main assembly is null. Cannot scan for entry points.");
+            }
+            // Scan Scripts.dll (existing logic with detailed logging)
+            if (mainAssembly != null && !string.IsNullOrEmpty(mainAssembly.Location))
+            {
+                string baseDirectory = Path.GetDirectoryName(mainAssembly.Location);
+                string scriptsDllPath = Path.Combine(baseDirectory, "Scripts.dll");
+
+                if (File.Exists(scriptsDllPath))
+                {
+                    try
+                    {
+                        Assembly scriptsAssembly = Assembly.LoadFrom(scriptsDllPath);
+                        if (scriptsAssembly != null)
+                        {
+                            Console.WriteLine($"Attempting to scan assembly: {scriptsAssembly.FullName}");
+                            try
+                            {
+                                var typesFromScripts = scriptsAssembly.GetTypes();
+                                entryPoints.AddRange(typesFromScripts
+                                    .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                                    .Where(m => m.GetCustomAttribute(typeof(PackAttribute), false) != null)
+                                    .Select(m => EntryPoint.FromAttrMethod(m))
+                                );
+                                Console.WriteLine($"Successfully loaded and scanned types from: {scriptsAssembly.FullName}");
+                            }
+                            catch (ReflectionTypeLoadException ex)
+                            {
+                                Console.WriteLine($"Error: Could not load one or more types from Scripts.dll ({scriptsDllPath}). See LoaderExceptions below:");
+                                if (ex.LoaderExceptions != null)
+                                {
+                                    foreach (Exception loaderEx in ex.LoaderExceptions)
+                                    {
+                                        Console.WriteLine($"- LoaderException: {loaderEx?.Message}");
+                                        if (loaderEx is FileNotFoundException fnfEx)
+                                        {
+                                            Console.WriteLine($"  Missing file: {fnfEx.FileName}");
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine("LoaderExceptions collection is null for Scripts.dll.");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"An unexpected error occurred while processing types from {scriptsAssembly.FullName}: {ex.Message}");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Warning: Could not load Scripts.dll from {scriptsDllPath}. Error: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Warning: Scripts.dll not found at {scriptsDllPath}. Entry points from it will not be loaded.");
+                }
+            }
+             else
+            {
+                // This condition might be redundant if mainAssembly is null from the start,
+                // but kept for structural consistency with previous versions.
+                Console.WriteLine("Warning: Main assembly location is unknown. Cannot determine path for Scripts.dll.");
+            }
+
+            if (!entryPoints.Any()) {
+                Console.WriteLine("No entry points found after scanning. The UI might be blank.");
+            }
+            return entryPoints.GroupBy(ep => $"{ep.group}_{ep.name}_{ep.subname}").Select(g => g.First()).ToList();
         }
 
         static void EntryPointForm(List<EntryPoint> entryPoints)
@@ -212,10 +318,26 @@ namespace merz
                             if (latestV > currentV)
                             {
                                 form.Options.AddTextLabel($"New version available: {latestVersionStr}");
-                                string downloadLinkHtml = $"Download from GitHub: <a href=\"https://github.com/precision-mining-consulting/merz/releases/latest\">https://github.com/precision-mining-consulting/merz/releases/latest</a>";
 
-                                form.Options.AddTextLabel(downloadLinkHtml, true);
+                                form.Options.AddButtonEdit("Download Update")
+                                    .SetClickAction(action =>
+                                    {
+                                        try
+                                        {
+                                            // Open the download link in the default browser
+                                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                                            {
+                                                FileName = "https://github.com/precision-mining-consulting/merz/releases/latest",
+                                                UseShellExecute = true // Important for opening URLs
+                                            });
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Console.WriteLine($"Error opening download link: {ex.Message}");
+                                        }
+                                    });
                             }
+
                         }
                         else
                         {
