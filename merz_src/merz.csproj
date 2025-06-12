@@ -14,9 +14,9 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
 
-  <!-- <ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\pm-spry-tools\.config\Scripts.csproj" />
-  </ItemGroup> -->
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

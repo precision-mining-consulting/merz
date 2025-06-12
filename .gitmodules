@@ -1,0 +1,3 @@
+[submodule "pm-spry-tools"]
+	path = pm-spry-tools
+	url = https://github.com/precision-mining-consulting/pm-spry-tools.git
