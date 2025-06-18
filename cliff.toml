@@ -16,11 +16,9 @@ body = """
 ### {{ group | striptags | trim }}
 
 {% for commit in commits -%}
-- **{{ commit.message | split(pat="\n") | first | trim | upper_first }}**{% if commit.body %}
-
-  {{ commit.body | trim | indent(prefix="  ") }}{% endif %}
-
-  ([{{ commit.id | truncate(length=7, end="") }}](https://github.com/precision-mining-consulting/pm-spry-tools/commit/{{ commit.id }}))
+- **{{ commit.message | split(pat="\n") | first | trim | upper_first }}**
+{% if commit.body %}  {{ commit.body | trim | indent(prefix="  ") }}
+{% endif %}  ([{{ commit.id | truncate(length=7, end="") }}](https://github.com/precision-mining-consulting/pm-spry-tools/commit/{{ commit.id }}))
 
 {% endfor %}
 
