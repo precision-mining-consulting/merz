@@ -311,9 +311,14 @@ namespace merz
                     string latestGitHubTag = GetLatestGitHubVersionAsync().GetAwaiter().GetResult();
                     if (!string.IsNullOrEmpty(latestGitHubTag))
                     {
-                        string latestVersionStr = latestGitHubTag.TrimStart('v'); // "1.0.1"
-                        if (Version.TryParse(version, out Version currentV) &&
-                            Version.TryParse(latestVersionStr, out Version latestV))
+                        string latestVersionStr = latestGitHubTag.TrimStart('v'); // "1.0.1" or "1.2.3-beta"
+
+                        // Prepare version strings for System.Version parsing by removing pre-release identifiers
+                        string parsableVersion = version.Split('-')[0];
+                        string parsableLatestVersionStr = latestVersionStr.Split('-')[0];
+
+                        if (Version.TryParse(parsableVersion, out Version currentV) &&
+                            Version.TryParse(parsableLatestVersionStr, out Version latestV))
                         {
                             if (latestV > currentV)
                             {
