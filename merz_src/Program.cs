@@ -127,25 +127,19 @@ namespace merz
         static string GetCurrentVersion()
         {
             Assembly assembly = _currentAssembly ?? Assembly.GetExecutingAssembly();
+            string assemblyPath = assembly.Location;
 
-            string path = assembly.Location;
+            // The version is assumed to be the name of the directory containing the assembly.
+            string version = new DirectoryInfo(Path.GetDirectoryName(assemblyPath)).Name;
 
-            // Check if we're running from a version directory
-            if (path.Contains(@"\v"))
+            // If the folder is like 'v1.4', strip the 'v'.
+            if (version.StartsWith("v"))
             {
-                // Extract version from path
-                string[] parts = path.Split(new string[] { @"\v" }, StringSplitOptions.None);
-                if (parts.Length > 1)
-                {
-                    string versionPart = parts[1];
-                    int endIndex = versionPart.IndexOf('\\');
-                    if (endIndex > 0)
-                        return versionPart.Substring(0, endIndex);
-                    return versionPart;
-                }
+                return version.Substring(1);
             }
 
-            return path;
+            // Otherwise, return the folder name as is (e.g., '0.0.0-dev-baher-250619')
+            return version;
         }
         static void RunOpen()
         {
