@@ -213,7 +213,7 @@ namespace merz
 
         static List<EntryPoint> CollectEntryPmSpryToolsEntryPoints()
         {
-            var args = new List<string> { "Haulage", "Landform", "Design", "Scheduling" };
+            var args = new List<string> { };
             var allEntryPoints = new List<EntryPoint>();
             Assembly mainAssembly = _currentAssembly ?? Assembly.GetExecutingAssembly();
 
@@ -254,11 +254,6 @@ namespace merz
                 Console.WriteLine("Filtering entry points by groups: " + string.Join(", ", args));
                 filteredEntryPoints = allEntryPoints.Where(ep => args.Contains(ep.group));
             }
-
-            // if (!filteredEntryPoints.Any())
-            // {
-            //     Console.WriteLine("No entry points found after scanning and filtering. The UI might be blank.");
-            // }
 
             return filteredEntryPoints.GroupBy(ep => $"{ep.group}_{ep.name}_{ep.subname}").Select(g => g.First()).ToList();
         }
