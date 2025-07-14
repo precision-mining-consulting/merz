@@ -40,17 +40,11 @@ namespace merz
                 var sortedDirs = versionDirs
                     .Select(dir => {
                         string dirName = Path.GetFileName(dir);
-                        string[] versionParts = dirName.TrimStart('v').Split('.');
-                        int major = 0, minor = 0;
-                        // Ensure robust parsing for versions like "v1" or "v1.0" or "v1.0.0"
-                        if (versionParts.Length > 0 && int.TryParse(versionParts[0], out int parsedMajor))
-                            major = parsedMajor;
-                        if (versionParts.Length > 1 && int.TryParse(versionParts[1], out int parsedMinor))
-                            minor = parsedMinor;
-                        // Create a System.Version object for proper sorting
-                        Version version = new Version(major, minor);
+                        string versionStr = dirName.TrimStart('v');
+                        Version.TryParse(versionStr, out Version version);
                         return new { Path = dir, Version = version };
                     })
+                    .Where(x => x.Version != null) // Filter out any directories that couldn't be parsed
                     .OrderByDescending(x => x.Version)
                     .Select(x => x.Path)
                     .ToArray();
