@@ -40,17 +40,11 @@ namespace merz
                 var sortedDirs = versionDirs
                     .Select(dir => {
                         string dirName = Path.GetFileName(dir);
-                        string[] versionParts = dirName.TrimStart('v').Split('.');
-                        int major = 0, minor = 0;
-                        // Ensure robust parsing for versions like "v1" or "v1.0" or "v1.0.0"
-                        if (versionParts.Length > 0 && int.TryParse(versionParts[0], out int parsedMajor))
-                            major = parsedMajor;
-                        if (versionParts.Length > 1 && int.TryParse(versionParts[1], out int parsedMinor))
-                            minor = parsedMinor;
-                        // Create a System.Version object for proper sorting
-                        Version version = new Version(major, minor);
+                        string versionStr = dirName.TrimStart('v');
+                        Version.TryParse(versionStr, out Version version);
                         return new { Path = dir, Version = version };
                     })
+                    .Where(x => x.Version != null) // Filter out any directories that couldn't be parsed
                     .OrderByDescending(x => x.Version)
                     .Select(x => x.Path)
                     .ToArray();
@@ -172,29 +166,31 @@ namespace merz
             };
         }
 
-        static List<EntryPoint> CollectEntryPmSpryToolsEntryPoints()
+        private static IEnumerable<EntryPoint> ScanAssemblyForEntryPoints(Assembly assembly)
         {
-            var entryPoints = new List<EntryPoint>();
-            Assembly mainAssembly = _currentAssembly ?? Assembly.GetExecutingAssembly();
-
-            // Scan the main assembly (merz.exe)
-            if (mainAssembly != null)
+            if (assembly == null)
             {
-                try
+                Console.WriteLine("Warning: Assembly to scan is null.");
+                return Enumerable.Empty<EntryPoint>();
+            }
+
+            try
+            {
+                Console.WriteLine($"Attempting to scan assembly: {assembly.FullName}");
+                var types = assembly.GetTypes();
+                var entryPoints = types
+                    .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                    .Where(m => m.GetCustomAttribute(typeof(PackAttribute), false) != null)
+                    .Select(m => EntryPoint.FromAttrMethod(m));
+                Console.WriteLine($"Successfully loaded and scanned types from: {assembly.FullName}");
+                return entryPoints;
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                Console.WriteLine($"Error: Could not load one or more types from assembly ({assembly.FullName}). See LoaderExceptions below:");
+                if (ex.LoaderExceptions != null)
                 {
-                    var typesFromMain = mainAssembly.GetTypes(); // This line can throw ReflectionTypeLoadException
-                    entryPoints.AddRange(typesFromMain
-                        .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-                        .Where(m => m.GetCustomAttribute(typeof(PackAttribute), false) != null)
-                        .Select(m => EntryPoint.FromAttrMethod(m))
-                    );
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    Console.WriteLine($"Error: Could not load one or more types from main assembly ({mainAssembly.FullName}). See LoaderExceptions below:");
-                    if (ex.LoaderExceptions != null)
-                    {
-                        foreach (Exception loaderEx in ex.LoaderExceptions)
+                    foreach (Exception loaderEx in ex.LoaderExceptions)
                         {
                             Console.WriteLine($"- LoaderException: {loaderEx?.Message}");
                             if (loaderEx is FileNotFoundException fnfEx)
@@ -202,22 +198,29 @@ namespace merz
                                 Console.WriteLine($"  Missing file: {fnfEx.FileName}");
                             }
                         }
-                    }
-                    else
-                    {
-                        Console.WriteLine("LoaderExceptions collection is null for main assembly.");
-                    }
                 }
-                catch (Exception ex)
+                else
                 {
-                    Console.WriteLine($"An unexpected error occurred while processing types from main assembly ({mainAssembly.FullName}): {ex.Message}");
+                    Console.WriteLine("LoaderExceptions collection is null for the assembly.");
                 }
             }
-            else
+            catch (Exception ex)
             {
-                Console.WriteLine("Warning: Main assembly is null. Cannot scan for entry points.");
+                Console.WriteLine($"An unexpected error occurred while processing types from assembly ({assembly.FullName}): {ex.Message}");
             }
-            // Scan Scripts.dll (existing logic with detailed logging)
+            return Enumerable.Empty<EntryPoint>();
+        }
+
+        static List<EntryPoint> CollectEntryPmSpryToolsEntryPoints()
+        {
+            var args = new List<string> { "Haulage", "Landform", "Design", "Scheduling" };
+            var allEntryPoints = new List<EntryPoint>();
+            Assembly mainAssembly = _currentAssembly ?? Assembly.GetExecutingAssembly();
+
+            // Scan the main assembly (merz.exe)
+            allEntryPoints.AddRange(ScanAssemblyForEntryPoints(mainAssembly));
+
+            // Scan Scripts.dll
             if (mainAssembly != null && !string.IsNullOrEmpty(mainAssembly.Location))
             {
                 string baseDirectory = Path.GetDirectoryName(mainAssembly.Location);
@@ -228,43 +231,7 @@ namespace merz
                     try
                     {
                         Assembly scriptsAssembly = Assembly.LoadFrom(scriptsDllPath);
-                        if (scriptsAssembly != null)
-                        {
-                            Console.WriteLine($"Attempting to scan assembly: {scriptsAssembly.FullName}");
-                            try
-                            {
-                                var typesFromScripts = scriptsAssembly.GetTypes();
-                                entryPoints.AddRange(typesFromScripts
-                                    .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-                                    .Where(m => m.GetCustomAttribute(typeof(PackAttribute), false) != null)
-                                    .Select(m => EntryPoint.FromAttrMethod(m))
-                                );
-                                Console.WriteLine($"Successfully loaded and scanned types from: {scriptsAssembly.FullName}");
-                            }
-                            catch (ReflectionTypeLoadException ex)
-                            {
-                                Console.WriteLine($"Error: Could not load one or more types from Scripts.dll ({scriptsDllPath}). See LoaderExceptions below:");
-                                if (ex.LoaderExceptions != null)
-                                {
-                                    foreach (Exception loaderEx in ex.LoaderExceptions)
-                                    {
-                                        Console.WriteLine($"- LoaderException: {loaderEx?.Message}");
-                                        if (loaderEx is FileNotFoundException fnfEx)
-                                        {
-                                            Console.WriteLine($"  Missing file: {fnfEx.FileName}");
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    Console.WriteLine("LoaderExceptions collection is null for Scripts.dll.");
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"An unexpected error occurred while processing types from {scriptsAssembly.FullName}: {ex.Message}");
-                            }
-                        }
+                        allEntryPoints.AddRange(ScanAssemblyForEntryPoints(scriptsAssembly));
                     }
                     catch (Exception ex)
                     {
@@ -276,17 +243,24 @@ namespace merz
                     Console.WriteLine($"Warning: Scripts.dll not found at {scriptsDllPath}. Entry points from it will not be loaded.");
                 }
             }
-             else
+            else
             {
-                // This condition might be redundant if mainAssembly is null from the start,
-                // but kept for structural consistency with previous versions.
                 Console.WriteLine("Warning: Main assembly location is unknown. Cannot determine path for Scripts.dll.");
             }
 
-            if (!entryPoints.Any()) {
-                Console.WriteLine("No entry points found after scanning. The UI might be blank.");
+            IEnumerable<EntryPoint> filteredEntryPoints = allEntryPoints;
+            if (args != null && args.Count > 0)
+            {
+                Console.WriteLine("Filtering entry points by groups: " + string.Join(", ", args));
+                filteredEntryPoints = allEntryPoints.Where(ep => args.Contains(ep.group));
             }
-            return entryPoints.GroupBy(ep => $"{ep.group}_{ep.name}_{ep.subname}").Select(g => g.First()).ToList();
+
+            // if (!filteredEntryPoints.Any())
+            // {
+            //     Console.WriteLine("No entry points found after scanning and filtering. The UI might be blank.");
+            // }
+
+            return filteredEntryPoints.GroupBy(ep => $"{ep.group}_{ep.name}_{ep.subname}").Select(g => g.First()).ToList();
         }
 
         static void EntryPointForm(List<EntryPoint> entryPoints)
