@@ -23,6 +23,8 @@ publish/
 # Rider
 .idea/
 
+merz_src/25.5.2083
+
 # User-specific files
 *.DS_Store
 Thumbs.db
