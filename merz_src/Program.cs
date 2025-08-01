@@ -260,6 +260,8 @@ namespace merz
             var config = LoadConfig();
             var enabledTools = config.Tools.Where(t => t.Enabled).ToList();
             
+            Console.WriteLine($"Config has {enabledTools.Count} enabled tools out of {config.Tools.Count} total");
+            
             // If no config exists or all tools disabled, show all tools
             if (!enabledTools.Any())
             {
@@ -270,10 +272,17 @@ namespace merz
             // Filter entry points by enabled tools in config
             var filteredEntryPoints = uniqueEntryPoints.Where(ep =>
             {
-                return enabledTools.Any(tool => 
+                bool isEnabled = enabledTools.Any(tool => 
                     tool.Group == ep.group && 
                     tool.Name == ep.name && 
                     tool.Sub == ep.subname);
+                
+                if (!isEnabled)
+                {
+                    Console.WriteLine($"Filtering out: {ep.group} -> {ep.name} -> {ep.subname}");
+                }
+                
+                return isEnabled;
             }).ToList();
 
             // Apply additional group filtering if specified
@@ -559,27 +568,42 @@ namespace merz
 
         static string GetConfigFilePath()
         {
+            // First try next to the executable (for deployed builds)
+            string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string exeConfigPath = Path.Combine(exeDirectory, ConfigFileName);
+            
+            if (File.Exists(exeConfigPath))
+            {
+                return exeConfigPath;
+            }
+            
+            // Fallback to user data directory
             return Path.Combine(MerzBasePath, ConfigFileName);
         }
 
         static MerzConfig LoadConfig()
         {
             string configPath = GetConfigFilePath();
+            Console.WriteLine($"Looking for config file at: {configPath}");
             
             if (!File.Exists(configPath))
             {
+                Console.WriteLine("Config file not found, using default behavior (all tools enabled)");
                 return new MerzConfig();
             }
 
             try
             {
                 string jsonContent = File.ReadAllText(configPath);
+                Console.WriteLine($"Loading config file from: {configPath}");
                 var options = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true,
                     WriteIndented = true
                 };
-                return JsonSerializer.Deserialize<MerzConfig>(jsonContent, options) ?? new MerzConfig();
+                var config = JsonSerializer.Deserialize<MerzConfig>(jsonContent, options) ?? new MerzConfig();
+                Console.WriteLine($"Loaded {config.Tools.Count} tool configurations");
+                return config;
             }
             catch (Exception ex)
             {
