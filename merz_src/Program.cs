@@ -22,6 +22,8 @@ namespace merz
             "merz"
         );
 
+        private static readonly string ConfigFileName = "merz-config.json";
+
         [STAThread]
         static void Main(string[] args)
         {
@@ -248,14 +250,50 @@ namespace merz
                 Console.WriteLine("Warning: Main assembly location is unknown. Cannot determine path for Scripts.dll.");
             }
 
-            IEnumerable<EntryPoint> filteredEntryPoints = allEntryPoints;
+            // Remove duplicates first
+            var uniqueEntryPoints = allEntryPoints.GroupBy(ep => $"{ep.group}_{ep.name}_{ep.subname}").Select(g => g.First()).ToList();
+            
+            // Generate/update config file with all discovered tools
+            GenerateConfigFromDiscoveredTools(uniqueEntryPoints);
+            
+            // Load config and filter by enabled tools
+            var config = LoadConfig();
+            var enabledTools = config.Tools.Where(t => t.Enabled).ToList();
+            
+            Console.WriteLine($"Config has {enabledTools.Count} enabled tools out of {config.Tools.Count} total");
+            
+            // If no config exists or all tools disabled, show all tools
+            if (!enabledTools.Any())
+            {
+                Console.WriteLine("No enabled tools in config, showing all discovered tools");
+                return uniqueEntryPoints;
+            }
+            
+            // Filter entry points by enabled tools in config
+            var filteredEntryPoints = uniqueEntryPoints.Where(ep =>
+            {
+                bool isEnabled = enabledTools.Any(tool => 
+                    tool.Group == ep.group && 
+                    tool.Name == ep.name && 
+                    tool.Sub == ep.subname);
+                
+                if (!isEnabled)
+                {
+                    Console.WriteLine($"Filtering out: {ep.group} -> {ep.name} -> {ep.subname}");
+                }
+                
+                return isEnabled;
+            }).ToList();
+
+            // Apply additional group filtering if specified
             if (args != null && args.Count > 0)
             {
                 Console.WriteLine("Filtering entry points by groups: " + string.Join(", ", args));
-                filteredEntryPoints = allEntryPoints.Where(ep => args.Contains(ep.group));
+                filteredEntryPoints = filteredEntryPoints.Where(ep => args.Contains(ep.group)).ToList();
             }
 
-            return filteredEntryPoints.GroupBy(ep => $"{ep.group}_{ep.name}_{ep.subname}").Select(g => g.First()).ToList();
+            Console.WriteLine($"Loaded {filteredEntryPoints.Count} enabled tools from {uniqueEntryPoints.Count} discovered tools");
+            return filteredEntryPoints;
         }
 
         static void EntryPointForm(List<EntryPoint> entryPoints)
@@ -527,6 +565,100 @@ namespace merz
 
             return x;
         }
+
+        static string GetConfigFilePath()
+        {
+            // First try next to the executable (for deployed builds)
+            string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string exeConfigPath = Path.Combine(exeDirectory, ConfigFileName);
+            
+            if (File.Exists(exeConfigPath))
+            {
+                return exeConfigPath;
+            }
+            
+            // Fallback to user data directory
+            return Path.Combine(MerzBasePath, ConfigFileName);
+        }
+
+        static MerzConfig LoadConfig()
+        {
+            string configPath = GetConfigFilePath();
+            Console.WriteLine($"Looking for config file at: {configPath}");
+            
+            if (!File.Exists(configPath))
+            {
+                Console.WriteLine("Config file not found, using default behavior (all tools enabled)");
+                return new MerzConfig();
+            }
+
+            try
+            {
+                string jsonContent = File.ReadAllText(configPath);
+                Console.WriteLine($"Loading config file from: {configPath}");
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    WriteIndented = true
+                };
+                var config = JsonSerializer.Deserialize<MerzConfig>(jsonContent, options) ?? new MerzConfig();
+                Console.WriteLine($"Loaded {config.Tools.Count} tool configurations");
+                return config;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Could not load config file {configPath}. Error: {ex.Message}");
+                return new MerzConfig();
+            }
+        }
+
+        static void SaveConfig(MerzConfig config)
+        {
+            try
+            {
+                Directory.CreateDirectory(MerzBasePath);
+                string configPath = GetConfigFilePath();
+                
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    WriteIndented = true
+                };
+                
+                string jsonContent = JsonSerializer.Serialize(config, options);
+                File.WriteAllText(configPath, jsonContent);
+                
+                Console.WriteLine($"Config saved to: {configPath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Could not save config file. Error: {ex.Message}");
+            }
+        }
+
+        static void GenerateConfigFromDiscoveredTools(List<EntryPoint> allEntryPoints)
+        {
+            var config = LoadConfig();
+            var existingTools = config.Tools.ToDictionary(t => $"{t.Group}_{t.Name}_{t.Sub}", t => t);
+            
+            foreach (var ep in allEntryPoints)
+            {
+                string key = $"{ep.group}_{ep.name}_{ep.subname}";
+                
+                if (!existingTools.ContainsKey(key))
+                {
+                    config.Tools.Add(new ToolConfig
+                    {
+                        Group = ep.group,
+                        Name = ep.name,
+                        Sub = ep.subname,
+                        Enabled = true
+                    });
+                }
+            }
+            
+            SaveConfig(config);
+        }
     }
 
     public class EntryPoint
@@ -560,5 +692,18 @@ namespace merz
     {
         public EntryPoint ep;
         public string name;
+    }
+
+    public class ToolConfig
+    {
+        public string Group { get; set; }
+        public string Name { get; set; }
+        public string Sub { get; set; }
+        public bool Enabled { get; set; } = true;
+    }
+
+    public class MerzConfig
+    {
+        public List<ToolConfig> Tools { get; set; } = new List<ToolConfig>();
     }
 }
