@@ -275,10 +275,11 @@ namespace merz
             // Filter entry points by enabled tools in config
             var filteredEntryPoints = uniqueEntryPoints.Where(ep =>
             {
+                // Treat null and empty strings as equivalent for the Sub property
                 bool isEnabled = enabledTools.Any(tool => 
                     tool.Group == ep.group && 
                     tool.Name == ep.name && 
-                    tool.Sub == ep.subname);
+                    (tool.Sub ?? "") == (ep.subname ?? ""));
                 
                 if (!isEnabled)
                 {
