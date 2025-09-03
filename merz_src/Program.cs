@@ -8,7 +8,10 @@ using Progress = PrecisionMining.Spry.Util.UI;
 using PrecisionMining.Spry;
 using System.Threading.Tasks;
 using System.Net.Http;
-using System.Text.Json;
+// 1. Replace System.Text.Json with Newtonsoft.Json
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 namespace merz
 {
     public class Program
@@ -410,13 +413,20 @@ namespace merz
                 response.EnsureSuccessStatusCode(); // Throws if not successful
                 var responseBody = await response.Content.ReadAsStringAsync();
 
-                using (JsonDocument doc = JsonDocument.Parse(responseBody))
+                // using (JsonDocument doc = JsonDocument.Parse(responseBody))
+                // {
+                //     JsonElement root = doc.RootElement;
+                //     if (root.TryGetProperty("tag_name", out JsonElement tagNameElement))
+                //     {
+                //         return tagNameElement.GetString();
+                //     }
+                // }
+
+                var json = JObject.Parse(responseBody);
+                string tagName = json["tag_name"]?.ToString();
+                if( !string.IsNullOrEmpty(tagName))
                 {
-                    JsonElement root = doc.RootElement;
-                    if (root.TryGetProperty("tag_name", out JsonElement tagNameElement))
-                    {
-                        return tagNameElement.GetString();
-                    }
+                    return tagName;
                 }
                 throw new Exception("Could not find 'tag_name' in GitHub API response.");
             }
@@ -568,17 +578,10 @@ namespace merz
 
         static string GetConfigFilePath()
         {
-            // First try next to the executable (for deployed builds)
+            // 2. Simplify path logic: The config file should always be next to the running executable.
+            // This correctly places it in the versioned folder (e.g., ...\v1.4.3\merz-config.json).
             string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            string exeConfigPath = Path.Combine(exeDirectory, ConfigFileName);
-            
-            if (File.Exists(exeConfigPath))
-            {
-                return exeConfigPath;
-            }
-            
-            // Fallback to user data directory
-            return Path.Combine(MerzBasePath, ConfigFileName);
+            return Path.Combine(exeDirectory, ConfigFileName);
         }
 
         static MerzConfig LoadConfig()
@@ -596,12 +599,8 @@ namespace merz
             {
                 string jsonContent = File.ReadAllText(configPath);
                 Console.WriteLine($"Loading config file from: {configPath}");
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    WriteIndented = true
-                };
-                var config = JsonSerializer.Deserialize<MerzConfig>(jsonContent, options) ?? new MerzConfig();
+                // 3. Use Newtonsoft.Json for deserialization
+                var config = JsonConvert.DeserializeObject<MerzConfig>(jsonContent) ?? new MerzConfig();
                 Console.WriteLine($"Loaded {config.Tools.Count} tool configurations");
                 return config;
             }
@@ -616,16 +615,13 @@ namespace merz
         {
             try
             {
-                Directory.CreateDirectory(MerzBasePath);
                 string configPath = GetConfigFilePath();
+                // 4. Ensure the specific directory for the config file exists.
+                string configDirectory = Path.GetDirectoryName(configPath);
+                Directory.CreateDirectory(configDirectory);
                 
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    WriteIndented = true
-                };
-                
-                string jsonContent = JsonSerializer.Serialize(config, options);
+                // 5. Use Newtonsoft.Json for serialization
+                string jsonContent = JsonConvert.SerializeObject(config, Formatting.Indented);
                 File.WriteAllText(configPath, jsonContent);
                 
                 Console.WriteLine($"Config saved to: {configPath}");
