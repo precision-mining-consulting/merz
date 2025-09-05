@@ -8,13 +8,17 @@ using Progress = PrecisionMining.Spry.Util.UI;
 using PrecisionMining.Spry;
 using System.Threading.Tasks;
 using System.Net.Http;
-using System.Text.Json;
+// 1. Replace System.Text.Json with Newtonsoft.Json
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 namespace merz
 {
     public class Program
     {
         static LastRun LAST_RUN;
         private static Assembly _currentAssembly;
+        private static bool IsDebugMode = false;
 
         private static readonly string MerzBasePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -27,11 +31,23 @@ namespace merz
         [STAThread]
         static void Main(string[] args)
         {
+            if (args.Contains("--debug"))
+            {
+                IsDebugMode = true;
+            }
 
-            if (args.Select(a => a == "run-last").FirstOrDefault())
+            if (args.Contains("run-last"))
                 RunLast();
             else
                 RunOpen();
+        }
+
+        static void LogDebug(string message)
+        {
+            if (IsDebugMode)
+            {
+                Console.WriteLine(message);
+            }
         }
 
         static string GetLatestMerzAssemblyPath()
@@ -79,8 +95,7 @@ namespace merz
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Warning: Could not unload previous assembly: " + ex.Message);
-                    // Potentially log more details or decide if this is critical
+                    LogDebug("Warning: Could not unload previous assembly: " + ex.Message);
                 }
             }
 
@@ -115,7 +130,7 @@ namespace merz
             {
                 BringInSpry();
 
-                Console.WriteLine("Running the last MERZ tool: " + LAST_RUN.name);
+                LogDebug("Running the last MERZ tool: " + LAST_RUN.name);
 
                 InvokeEntryPoint(LAST_RUN.ep);
             }
@@ -172,43 +187,43 @@ namespace merz
         {
             if (assembly == null)
             {
-                Console.WriteLine("Warning: Assembly to scan is null.");
+                LogDebug("Warning: Assembly to scan is null.");
                 return Enumerable.Empty<EntryPoint>();
             }
 
             try
             {
-                Console.WriteLine($"Attempting to scan assembly: {assembly.FullName}");
+                LogDebug($"Attempting to scan assembly: {assembly.FullName}");
                 var types = assembly.GetTypes();
                 var entryPoints = types
                     .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
                     .Where(m => m.GetCustomAttribute(typeof(PackAttribute), false) != null)
                     .Select(m => EntryPoint.FromAttrMethod(m));
-                Console.WriteLine($"Successfully loaded and scanned types from: {assembly.FullName}");
+                LogDebug($"Successfully loaded and scanned types from: {assembly.FullName}");
                 return entryPoints;
             }
             catch (ReflectionTypeLoadException ex)
             {
-                Console.WriteLine($"Error: Could not load one or more types from assembly ({assembly.FullName}). See LoaderExceptions below:");
+                LogDebug($"Error: Could not load one or more types from assembly ({assembly.FullName}). See LoaderExceptions below:");
                 if (ex.LoaderExceptions != null)
                 {
                     foreach (Exception loaderEx in ex.LoaderExceptions)
                         {
-                            Console.WriteLine($"- LoaderException: {loaderEx?.Message}");
+                            LogDebug($"- LoaderException: {loaderEx?.Message}");
                             if (loaderEx is FileNotFoundException fnfEx)
                             {
-                                Console.WriteLine($"  Missing file: {fnfEx.FileName}");
+                                LogDebug($"  Missing file: {fnfEx.FileName}");
                             }
                         }
                 }
                 else
                 {
-                    Console.WriteLine("LoaderExceptions collection is null for the assembly.");
+                    LogDebug("LoaderExceptions collection is null for the assembly.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred while processing types from assembly ({assembly.FullName}): {ex.Message}");
+                LogDebug($"An unexpected error occurred while processing types from assembly ({assembly.FullName}): {ex.Message}");
             }
             return Enumerable.Empty<EntryPoint>();
         }
@@ -237,17 +252,17 @@ namespace merz
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Warning: Could not load Scripts.dll from {scriptsDllPath}. Error: {ex.Message}");
+                        LogDebug($"Warning: Could not load Scripts.dll from {scriptsDllPath}. Error: {ex.Message}");
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"Warning: Scripts.dll not found at {scriptsDllPath}. Entry points from it will not be loaded.");
+                    LogDebug($"Warning: Scripts.dll not found at {scriptsDllPath}. Entry points from it will not be loaded.");
                 }
             }
             else
             {
-                Console.WriteLine("Warning: Main assembly location is unknown. Cannot determine path for Scripts.dll.");
+                LogDebug("Warning: Main assembly location is unknown. Cannot determine path for Scripts.dll.");
             }
 
             // Remove duplicates first
@@ -260,12 +275,12 @@ namespace merz
             var config = LoadConfig();
             var enabledTools = config.Tools.Where(t => t.Enabled).ToList();
             
-            Console.WriteLine($"Config has {enabledTools.Count} enabled tools out of {config.Tools.Count} total");
+            LogDebug($"Config has {enabledTools.Count} enabled tools out of {config.Tools.Count} total");
             
             // If no config exists or all tools disabled, show all tools
             if (!enabledTools.Any())
             {
-                Console.WriteLine("No enabled tools in config, showing all discovered tools");
+                LogDebug("No enabled tools in config, showing all discovered tools");
                 return uniqueEntryPoints;
             }
             
@@ -275,11 +290,11 @@ namespace merz
                 bool isEnabled = enabledTools.Any(tool => 
                     tool.Group == ep.group && 
                     tool.Name == ep.name && 
-                    tool.Sub == ep.subname);
+                    (tool.Sub ?? "") == (ep.subname ?? ""));
                 
                 if (!isEnabled)
                 {
-                    Console.WriteLine($"Filtering out: {ep.group} -> {ep.name} -> {ep.subname}");
+                    LogDebug($"Filtering out: {ep.group} -> {ep.name} -> {ep.subname}");
                 }
                 
                 return isEnabled;
@@ -288,11 +303,11 @@ namespace merz
             // Apply additional group filtering if specified
             if (args != null && args.Count > 0)
             {
-                Console.WriteLine("Filtering entry points by groups: " + string.Join(", ", args));
+                LogDebug("Filtering entry points by groups: " + string.Join(", ", args));
                 filteredEntryPoints = filteredEntryPoints.Where(ep => args.Contains(ep.group)).ToList();
             }
 
-            Console.WriteLine($"Loaded {filteredEntryPoints.Count} enabled tools from {uniqueEntryPoints.Count} discovered tools");
+            // LogDebug($"Loaded {filteredEntryPoints.Count} enabled tools from {uniqueEntryPoints.Count} discovered tools");
             return filteredEntryPoints;
         }
 
@@ -347,7 +362,7 @@ namespace merz
                         }
                         else
                         {
-                            Console.WriteLine($"Could not parse versions for comparison. Current: '{version}', Latest from GitHub: '{latestVersionStr}'");
+                            LogDebug($"Could not parse versions for comparison. Current: '{version}', Latest from GitHub: '{latestVersionStr}'");
                         }
                     }
 
@@ -410,13 +425,20 @@ namespace merz
                 response.EnsureSuccessStatusCode(); // Throws if not successful
                 var responseBody = await response.Content.ReadAsStringAsync();
 
-                using (JsonDocument doc = JsonDocument.Parse(responseBody))
+                // using (JsonDocument doc = JsonDocument.Parse(responseBody))
+                // {
+                //     JsonElement root = doc.RootElement;
+                //     if (root.TryGetProperty("tag_name", out JsonElement tagNameElement))
+                //     {
+                //         return tagNameElement.GetString();
+                //     }
+                // }
+
+                var json = JObject.Parse(responseBody);
+                string tagName = json["tag_name"]?.ToString();
+                if( !string.IsNullOrEmpty(tagName))
                 {
-                    JsonElement root = doc.RootElement;
-                    if (root.TryGetProperty("tag_name", out JsonElement tagNameElement))
-                    {
-                        return tagNameElement.GetString();
-                    }
+                    return tagName;
                 }
                 throw new Exception("Could not find 'tag_name' in GitHub API response.");
             }
@@ -568,46 +590,35 @@ namespace merz
 
         static string GetConfigFilePath()
         {
-            // First try next to the executable (for deployed builds)
+            // 2. Simplify path logic: The config file should always be next to the running executable.
+            // This correctly places it in the versioned folder (e.g., ...\v1.4.3\merz-config.json).
             string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            string exeConfigPath = Path.Combine(exeDirectory, ConfigFileName);
-            
-            if (File.Exists(exeConfigPath))
-            {
-                return exeConfigPath;
-            }
-            
-            // Fallback to user data directory
-            return Path.Combine(MerzBasePath, ConfigFileName);
+            return Path.Combine(exeDirectory, ConfigFileName);
         }
 
         static MerzConfig LoadConfig()
         {
             string configPath = GetConfigFilePath();
-            Console.WriteLine($"Looking for config file at: {configPath}");
+            LogDebug($"Looking for config file at: {configPath}");
             
             if (!File.Exists(configPath))
             {
-                Console.WriteLine("Config file not found, using default behavior (all tools enabled)");
+                LogDebug("Config file not found, using default behavior (all tools enabled)");
                 return new MerzConfig();
             }
 
             try
             {
                 string jsonContent = File.ReadAllText(configPath);
-                Console.WriteLine($"Loading config file from: {configPath}");
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    WriteIndented = true
-                };
-                var config = JsonSerializer.Deserialize<MerzConfig>(jsonContent, options) ?? new MerzConfig();
-                Console.WriteLine($"Loaded {config.Tools.Count} tool configurations");
+                LogDebug($"Loading config file from: {configPath}");
+                // 3. Use Newtonsoft.Json for deserialization
+                var config = JsonConvert.DeserializeObject<MerzConfig>(jsonContent) ?? new MerzConfig();
+                LogDebug($"Loaded {config.Tools.Count} tool configurations");
                 return config;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Warning: Could not load config file {configPath}. Error: {ex.Message}");
+                LogDebug($"Warning: Could not load config file {configPath}. Error: {ex.Message}");
                 return new MerzConfig();
             }
         }
@@ -616,23 +627,20 @@ namespace merz
         {
             try
             {
-                Directory.CreateDirectory(MerzBasePath);
                 string configPath = GetConfigFilePath();
+                // 4. Ensure the specific directory for the config file exists.
+                string configDirectory = Path.GetDirectoryName(configPath);
+                Directory.CreateDirectory(configDirectory);
                 
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    WriteIndented = true
-                };
-                
-                string jsonContent = JsonSerializer.Serialize(config, options);
+                // 5. Use Newtonsoft.Json for serialization
+                string jsonContent = JsonConvert.SerializeObject(config, Formatting.Indented);
                 File.WriteAllText(configPath, jsonContent);
                 
-                Console.WriteLine($"Config saved to: {configPath}");
+                LogDebug($"Config saved to: {configPath}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Warning: Could not save config file. Error: {ex.Message}");
+                LogDebug($"Warning: Could not save config file. Error: {ex.Message}");
             }
         }
 
