@@ -1,0 +1,1204 @@
+import React, { useState } from 'react';
+import { ChevronDown, ChevronRight, AlertTriangle, CheckCircle, Database, GitBranch, TrendingUp } from 'lucide-react';
+
+const CoalMiningFlowChart = () => {
+  const [expandedSections, setExpandedSections] = useState({
+    data: true,
+    decision: true,
+    stockpile: true,
+    reconciliation: true,
+    scheduleTools: true
+  });
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  return (
+    <div className="w-full max-w-7xl mx-auto p-6 bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-4">
+        <h1 className="text-3xl font-bold text-slate-800 mb-2">Coal Mining Operations Flow Chart</h1>
+        <div className="flex gap-4 text-sm text-slate-600">
+          <span>Version 2.0</span>
+          <span>|</span>
+          <span>Updated: Nov 2025</span>
+          <span>|</span>
+          <span className="flex items-center gap-1">
+            <CheckCircle size={14} className="text-green-600" />
+            Enhanced with Traceability & Risk Management
+          </span>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
+        <h3 className="font-semibold mb-3 text-slate-700">Legend</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-500 rounded"></div>
+            <span>Data Input</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-amber-500 rounded-full"></div>
+            <span>Decision Point</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-500 rounded"></div>
+            <span>Process</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-purple-500 rounded"></div>
+            <span>Output/Report</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Flow */}
+      <div className="space-y-6">
+        
+        {/* SECTION 1: DATA INPUTS */}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div 
+            className="bg-blue-600 text-white p-4 cursor-pointer flex items-center justify-between"
+            onClick={() => toggleSection('data')}
+          >
+            <div className="flex items-center gap-2">
+              <Database size={24} />
+              <h2 className="text-xl font-bold">1. DATA INPUTS & FOUNDATION</h2>
+            </div>
+            {expandedSections.data ? <ChevronDown size={24} /> : <ChevronRight size={24} />}
+          </div>
+          
+          {expandedSections.data && (
+            <div className="p-6">
+              <div className="grid md:grid-cols-3 gap-4">
+                
+                {/* Geological Data */}
+                <div className="border-2 border-blue-300 rounded-lg p-4 bg-blue-50">
+                  <h3 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
+                    <Database size={18} />
+                    Geological Data (In-Situ)
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Quantity Data:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Raw coal tonnage</li>
+                        <li>• Product yield estimates</li>
+                        <li>• Seam thickness</li>
+                        <li>• Block model volumes</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Quality Data:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Ash content</li>
+                        <li>• Moisture</li>
+                        <li>• Sulfur</li>
+                        <li>• Energy content (CV)</li>
+                        <li>• Size distribution</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Spatial Data:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Pit coordinates</li>
+                        <li>• Seam locations</li>
+                        <li>• Fault lines</li>
+                      </ul>
+                    </div>
+                    <div className="text-xs text-slate-600 mt-2 p-2 bg-slate-100 rounded">
+                      <strong>Owner:</strong> Geology Team<br/>
+                      <strong>Update:</strong> Monthly or as drilled
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stockpile Data */}
+                <div className="border-2 border-blue-300 rounded-lg p-4 bg-blue-50">
+                  <h3 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
+                    <Database size={18} />
+                    Stockpile Data
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Current Inventory:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Quantity by location</li>
+                        <li>• Quality estimates</li>
+                        <li>• Swell factor applied</li>
+                        <li>• Age/residency time</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Physical Properties:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Handleability index</li>
+                        <li>• Maximum residency</li>
+                        <li>• Degradation rate</li>
+                        <li>• Spontaneous combustion risk</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Capacity Constraints:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Max volume per pad</li>
+                        <li>• Access limitations</li>
+                        <li>• Segregation requirements</li>
+                      </ul>
+                    </div>
+                    <div className="text-xs text-slate-600 mt-2 p-2 bg-slate-100 rounded">
+                      <strong>Owner:</strong> Operations Team<br/>
+                      <strong>Update:</strong> Daily scans
+                    </div>
+                  </div>
+                </div>
+
+                {/* Schedule & Constraints */}
+                <div className="border-2 border-blue-300 rounded-lg p-4 bg-blue-50">
+                  <h3 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
+                    <Database size={18} />
+                    Schedule & Constraints
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Starting Inventory:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Face positions surveyed</li>
+                        <li>• Uncovered coal in pit</li>
+                        <li>• Stockpile quantities</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Time Usage Model:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Planned delays/shutdowns</li>
+                        <li>• Dig rates by area</li>
+                        <li>• Equipment availability</li>
+                        <li>• Maintenance schedules</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Constraints:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Proximity restrictions</li>
+                        <li>• Enabling activities</li>
+                        <li>• CHPP capacity limits</li>
+                        <li>• Rail/port windows</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Risk Factors:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Weather windows</li>
+                        <li>• Geotechnical stability</li>
+                        <li>• Sales commitments</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 p-4 bg-slate-100 rounded-lg border-l-4 border-blue-600">
+                <h4 className="font-semibold mb-2">Data Quality Requirements:</h4>
+                <ul className="text-sm space-y-1 text-slate-700">
+                  <li>• All data must be validated before use in planning</li>
+                  <li>• Uncertainty ranges documented for all quality predictions</li>
+                  <li>• Version control maintained for all input datasets</li>
+                  <li>• Traceability maintained from drill hole to product</li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Arrow */}
+        <div className="flex justify-center">
+          <div className="text-4xl text-slate-400">↓</div>
+        </div>
+
+        {/* SECTION 1.5: SCHEDULE TOOLS */}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div 
+            className="bg-teal-600 text-white p-4 cursor-pointer flex items-center justify-between"
+            onClick={() => toggleSection('scheduleTools')}
+          >
+            <div className="flex items-center gap-2">
+              <TrendingUp size={24} />
+              <h2 className="text-xl font-bold">1.5 SCHEDULE OPTIMIZATION TOOLS</h2>
+            </div>
+            {expandedSections.scheduleTools ? <ChevronDown size={24} /> : <ChevronRight size={24} />}
+          </div>
+          
+          {expandedSections.scheduleTools && (
+            <div className="p-6">
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                
+                {/* Stoch Tool */}
+                <div className="border-2 border-teal-300 rounded-lg p-4 bg-teal-50">
+                  <h3 className="font-bold text-teal-900 mb-3 flex items-center gap-2">
+                    <TrendingUp size={20} />
+                    Stoch - Stochastic Schedule Analysis
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-teal-800 mb-2">Purpose:</div>
+                      <p className="text-slate-700">Runs 100+ variations of the deterministic schedule to quantify uncertainty and establish confidence ranges for production forecasts</p>
+                    </div>
+
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-teal-800 mb-2">Input Distributions:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• <strong>Availability:</strong> Equipment uptime variance</li>
+                        <li>• <strong>Utilization:</strong> Operational efficiency ranges</li>
+                        <li>• <strong>Rate:</strong> Dig rate variations by geology/conditions</li>
+                        <li>• <strong>Delays:</strong> Weather, maintenance, operational stoppages</li>
+                        <li>• <strong>Black Swan Events:</strong> Major unplanned disruptions</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-teal-800 mb-2">Output Analysis:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• P10/P50/P90 production curves</li>
+                        <li>• Risk-adjusted schedule outcomes</li>
+                        <li>• Sensitivity rankings</li>
+                        <li>• Probability of meeting targets</li>
+                        <li>• Critical path identification</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-teal-800 mb-2">When to Run:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Annual plan development</li>
+                        <li>• Major schedule changes</li>
+                        <li>• Budget/guidance setting</li>
+                        <li>• Risk assessment reviews</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-teal-100 p-3 rounded border-l-4 border-teal-600">
+                      <div className="font-semibold text-teal-900 mb-1">Integration Point:</div>
+                      <p className="text-sm text-slate-700">Stoch runs after deterministic schedule creation but before final plan approval, providing management with confidence ranges and risk quantification</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Blandr Tool */}
+                <div className="border-2 border-teal-300 rounded-lg p-4 bg-teal-50">
+                  <h3 className="font-bold text-teal-900 mb-3 flex items-center gap-2">
+                    <GitBranch size={20} />
+                    Blandr - Linear Product Optimization
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-teal-800 mb-2">Purpose:</div>
+                      <p className="text-slate-700">Runs linear programming optimization to determine optimal product blend strategy from available coal sources (pit uncovery + stockpiles) to maximize value</p>
+                    </div>
+
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-teal-800 mb-2">Input Parameters:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• <strong>Coal Uncovery:</strong> Timing and quality from mine schedule</li>
+                        <li>• <strong>Stockpile Inventory:</strong> Available quantity and quality by time bucket</li>
+                        <li>• <strong>Product Specifications:</strong> Customer quality requirements</li>
+                        <li>• <strong>Pricing:</strong> Revenue by product grade</li>
+                        <li>• <strong>Costs:</strong> Handling, processing, blending costs</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-teal-800 mb-2">Optimization Outputs:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Optimal product selection mix</li>
+                        <li>• Blending ratios (pit:stockpile)</li>
+                        <li>• Margin maximization strategy</li>
+                        <li>• Stockpile drawdown schedule</li>
+                        <li>• Constraint violation warnings</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-teal-800 mb-2">Constraints Applied:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• CHPP capacity limits</li>
+                        <li>• Stockpile max residency times</li>
+                        <li>• Quality specification ranges</li>
+                        <li>• Sales contract commitments</li>
+                        <li>• Rail/port capacity windows</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-teal-100 p-3 rounded border-l-4 border-teal-600">
+                      <div className="font-semibold text-teal-900 mb-1">Integration Point:</div>
+                      <p className="text-sm text-slate-700">Blandr runs after schedule completion to optimize product determination strategy, feeding results back into operational routing decisions and financial forecasts</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tool Workflow */}
+              <div className="border-2 border-indigo-400 rounded-lg p-4 bg-indigo-50">
+                <h3 className="font-bold text-indigo-900 mb-3">Schedule Tool Workflow</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-blue-600 text-white px-3 py-2 rounded font-semibold text-sm">1. Deterministic Schedule</div>
+                    <div className="text-2xl text-slate-400">→</div>
+                    <div className="bg-teal-600 text-white px-3 py-2 rounded font-semibold text-sm">2. Stoch Analysis</div>
+                    <div className="text-2xl text-slate-400">→</div>
+                    <div className="bg-teal-600 text-white px-3 py-2 rounded font-semibold text-sm">3. Blandr Optimization</div>
+                    <div className="text-2xl text-slate-400">→</div>
+                    <div className="bg-green-600 text-white px-3 py-2 rounded font-semibold text-sm">4. Final Plan</div>
+                  </div>
+                  
+                  <div className="bg-white p-4 rounded shadow-sm">
+                    <div className="grid md:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <div className="font-semibold mb-1">Step 1:</div>
+                        <p className="text-slate-600">Create base case schedule using planned dig rates, equipment availability, and constraints</p>
+                      </div>
+                      <div>
+                        <div className="font-semibold mb-1">Step 2:</div>
+                        <p className="text-slate-600">Run Stoch to quantify risks and establish P10/P50/P90 scenarios with probability distributions</p>
+                      </div>
+                      <div>
+                        <div className="font-semibold mb-1">Step 3:</div>
+                        <p className="text-slate-600">Run Blandr on each scenario to optimize product mix and maximize margin given constraints</p>
+                      </div>
+                      <div>
+                        <div className="font-semibold mb-1">Step 4:</div>
+                        <p className="text-slate-600">Select optimal strategy balancing value, risk tolerance, and operational feasibility</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-50 border-l-4 border-amber-600 p-3 rounded">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <div className="font-semibold text-amber-900">Key Consideration:</div>
+                        <p className="text-slate-700">Stoch provides the "what could happen" while Blandr determines "what should we do". Both tools together enable risk-aware, value-optimized planning.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Use Cases */}
+              <div className="grid md:grid-cols-2 gap-4 mt-4">
+                <div className="bg-white border-2 border-slate-300 rounded-lg p-4">
+                  <h4 className="font-semibold text-slate-800 mb-2 text-sm">Example: Annual Planning</h4>
+                  <div className="text-xs text-slate-700 space-y-1">
+                    <p>1. Create 12-month deterministic schedule</p>
+                    <p>2. Run Stoch with 500 iterations → P50 = 4.2Mt, P10 = 3.8Mt</p>
+                    <p>3. Run Blandr on P50 case → Optimal mix: 65% Premium, 35% Standard</p>
+                    <p>4. Validate against P10 scenario for downside protection</p>
+                    <p>5. Set budget guidance at P50, with P10 as risk scenario</p>
+                  </div>
+                </div>
+                <div className="bg-white border-2 border-slate-300 rounded-lg p-4">
+                  <h4 className="font-semibold text-slate-800 mb-2 text-sm">Example: Mid-Year Reforecast</h4>
+                  <div className="text-xs text-slate-700 space-y-1">
+                    <p>1. Update schedule with YTD actuals and revised assumptions</p>
+                    <p>2. Run Stoch with reduced uncertainty (6 months vs 12 months)</p>
+                    <p>3. Blandr optimization shows shift to Standard product more profitable</p>
+                    <p>4. Update stockpile strategy to support product mix change</p>
+                    <p>5. Revise guidance with improved confidence ranges</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Arrow */}
+        <div className="flex justify-center">
+          <div className="text-4xl text-slate-400">↓</div>
+        </div>
+
+        {/* SECTION 2: DECISION POINT */}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div 
+            className="bg-amber-600 text-white p-4 cursor-pointer flex items-center justify-between"
+            onClick={() => toggleSection('decision')}
+          >
+            <div className="flex items-center gap-2">
+              <GitBranch size={24} />
+              <h2 className="text-xl font-bold">2. ROUTING DECISION: WHERE TO SEND?</h2>
+            </div>
+            {expandedSections.decision ? <ChevronDown size={24} /> : <ChevronRight size={24} />}
+          </div>
+          
+          {expandedSections.decision && (
+            <div className="p-6">
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 mb-4">
+                <h3 className="font-bold text-amber-900 mb-3">Decision Criteria Matrix</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-amber-100">
+                      <tr>
+                        <th className="p-2 text-left">Criterion</th>
+                        <th className="p-2 text-center">Direct to CHPP</th>
+                        <th className="p-2 text-center">To Stockpile</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white">
+                      <tr className="border-b">
+                        <td className="p-2 font-semibold">Quality vs Spec</td>
+                        <td className="p-2 text-center">Within ±3% of target</td>
+                        <td className="p-2 text-center">Outside spec, needs blending</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-2 font-semibold">CHPP Capacity</td>
+                        <td className="p-2 text-center">&lt;85% utilization</td>
+                        <td className="p-2 text-center">&gt;85% utilization</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-2 font-semibold">Sales Urgency</td>
+                        <td className="p-2 text-center">Vessel &lt;7 days out</td>
+                        <td className="p-2 text-center">No immediate demand</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-2 font-semibold">Product Margin</td>
+                        <td className="p-2 text-center">Premium product</td>
+                        <td className="p-2 text-center">Standard product</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-2 font-semibold">Weather Risk</td>
+                        <td className="p-2 text-center">Low rainfall forecast</td>
+                        <td className="p-2 text-center">Move before wet season</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-semibold">Inventory Level</td>
+                        <td className="p-2 text-center">Stockpile &gt;70% full</td>
+                        <td className="p-2 text-center">Stockpile &lt;70% full</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Direct Feed Path */}
+                <div className="border-2 border-green-400 rounded-lg p-4 bg-green-50">
+                  <h3 className="font-bold text-green-900 mb-3 text-center">PATH A: Direct Feed to CHPP</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-green-800 mb-1">Advantages:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Full traceability maintained</li>
+                        <li>• No quality degradation</li>
+                        <li>• Lower handling costs</li>
+                        <li>• Faster to market</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-green-800 mb-1">Requirements:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• CHPP capacity available</li>
+                        <li>• Quality meets spec</li>
+                        <li>• Sales order confirmed</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-green-800 mb-1">KPI Target:</div>
+                      <p className="ml-4 text-slate-700">Direct feed &gt;60% of total production</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stockpile Path */}
+                <div className="border-2 border-orange-400 rounded-lg p-4 bg-orange-50">
+                  <h3 className="font-bold text-orange-900 mb-3 text-center">PATH B: To Stockpile</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-orange-800 mb-1">Purposes:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Quality blending buffer</li>
+                        <li>• Production smoothing</li>
+                        <li>• Weather contingency</li>
+                        <li>• Market flexibility</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-orange-800 mb-1">Considerations:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Quality degradation risk</li>
+                        <li>• Lost traceability</li>
+                        <li>• Additional handling cost</li>
+                        <li>• Capacity limits</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-orange-800 mb-1">KPI Target:</div>
+                      <p className="ml-4 text-slate-700">Average residency &lt;30 days</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 p-4 bg-red-50 border-l-4 border-red-600 rounded-lg flex items-start gap-3">
+                <AlertTriangle className="text-red-600 flex-shrink-0 mt-1" size={20} />
+                <div>
+                  <h4 className="font-semibold text-red-900 mb-1">Critical Decision Point</h4>
+                  <p className="text-sm text-slate-700">Decision must be logged with: timestamp, decision maker, criteria used, and quality snapshot. This enables reconciliation and continuous improvement.</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Arrow */}
+        <div className="flex justify-center">
+          <div className="text-4xl text-slate-400">↓</div>
+        </div>
+
+        {/* SECTION 3: STOCKPILE MANAGEMENT */}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div 
+            className="bg-green-600 text-white p-4 cursor-pointer flex items-center justify-between"
+            onClick={() => toggleSection('stockpile')}
+          >
+            <div className="flex items-center gap-2">
+              <TrendingUp size={24} />
+              <h2 className="text-xl font-bold">3. STOCKPILE MANAGEMENT & CHPP PROCESSING</h2>
+            </div>
+            {expandedSections.stockpile ? <ChevronDown size={24} /> : <ChevronRight size={24} />}
+          </div>
+          
+          {expandedSections.stockpile && (
+            <div className="p-6">
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                
+                {/* Stockpile Strategy */}
+                <div className="border-2 border-green-300 rounded-lg p-4 bg-green-50">
+                  <h3 className="font-bold text-green-900 mb-3">Stockpile Strategy & Methods</h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-green-800 mb-2">Depletion Method:</div>
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="w-2 h-2 bg-green-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                          <div>
+                            <strong>FIFO (First In, First Out):</strong> Minimizes degradation, preserves quality
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <div className="w-2 h-2 bg-amber-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                          <div>
+                            <strong>LIFO (Last In, First Out):</strong> Used when fresh coal priority needed
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                          <div>
+                            <strong>Blended:</strong> Mix multiple sources to achieve target quality
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-green-800 mb-2">Block Model Decision:</div>
+                      <div className="space-y-1 text-slate-700">
+                        <div><strong>Required when:</strong></div>
+                        <ul className="ml-4">
+                          <li>• Residency &gt;14 days</li>
+                          <li>• Multiple coal types</li>
+                          <li>• Complex blending needed</li>
+                          <li>• Volume &gt;50,000 tonnes</li>
+                        </ul>
+                        <div className="mt-2"><strong>Simple tracking when:</strong></div>
+                        <ul className="ml-4">
+                          <li>• High turnover (&lt;7 days)</li>
+                          <li>• Single source material</li>
+                          <li>• Direct feed priority</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-green-800 mb-2">Traceability Solution:</div>
+                      <div className="space-y-1 text-slate-700">
+                        <ul className="ml-4">
+                          <li>• Time-stamped virtual parcels</li>
+                          <li>• Weighted average by age</li>
+                          <li>• Confidence scoring (High/Med/Low)</li>
+                          <li>• Report ranges not point estimates</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CHPP Processing */}
+                <div className="border-2 border-green-300 rounded-lg p-4 bg-green-50">
+                  <h3 className="font-bold text-green-900 mb-3">CHPP Processing</h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-green-800 mb-2">Input Sources:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Direct feed from pit (preferred)</li>
+                        <li>• Stockpile drawdown (as needed)</li>
+                        <li>• Blended feed for quality control</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-green-800 mb-2">Quality Control:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Online analyzers (continuous)</li>
+                        <li>• Composite sampling (hourly)</li>
+                        <li>• Laboratory testing (shift basis)</li>
+                        <li>• Real-time adjustments</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-green-800 mb-2">Output Streams:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Product coal (to rail/port)</li>
+                        <li>• Rejects (to waste disposal)</li>
+                        <li>• Off-spec (to secondary stockpile)</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold text-green-800 mb-2">Capacity Management:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Nameplate: [X] tph</li>
+                        <li>• Target utilization: 75-85%</li>
+                        <li>• Maintenance windows planned</li>
+                        <li>• Contingency procedures ready</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stockpile Degradation Model */}
+              <div className="border-2 border-yellow-400 rounded-lg p-4 bg-yellow-50">
+                <h3 className="font-bold text-yellow-900 mb-3">⚠️ Coal Quality Degradation Model</h3>
+                <div className="grid md:grid-cols-3 gap-3 text-sm">
+                  <div className="bg-white p-3 rounded">
+                    <div className="font-semibold mb-1">0-14 Days:</div>
+                    <p className="text-slate-700">Minimal degradation (&lt;1% quality loss)</p>
+                  </div>
+                  <div className="bg-white p-3 rounded">
+                    <div className="font-semibold mb-1">15-30 Days:</div>
+                    <p className="text-slate-700">Moderate impact (1-3% ash increase, moisture changes)</p>
+                  </div>
+                  <div className="bg-white p-3 rounded">
+                    <div className="font-semibold mb-1">&gt;30 Days:</div>
+                    <p className="text-slate-700">Significant degradation, spontaneous combustion risk increases</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Arrow */}
+        <div className="flex justify-center">
+          <div className="text-4xl text-slate-400">↓</div>
+        </div>
+
+        {/* SECTION 4: OUTPUTS & RECONCILIATION */}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div 
+            className="bg-purple-600 text-white p-4 cursor-pointer flex items-center justify-between"
+            onClick={() => toggleSection('reconciliation')}
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircle size={24} />
+              <h2 className="text-xl font-bold">4. OUTPUTS, RECONCILIATION & CONTINUOUS IMPROVEMENT</h2>
+            </div>
+            {expandedSections.reconciliation ? <ChevronDown size={24} /> : <ChevronRight size={24} />}
+          </div>
+          
+          {expandedSections.reconciliation && (
+            <div className="p-6">
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                
+                {/* Actuals Collection */}
+                <div className="border-2 border-purple-300 rounded-lg p-4 bg-purple-50">
+                  <h3 className="font-bold text-purple-900 mb-3">Actuals Data Collection</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Mining Actuals:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Mined out polygons (daily)</li>
+                        <li>• Actual face positions</li>
+                        <li>• Prime/as-constructed surfaces</li>
+                        <li>• Drill, load, blast records</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Movement Tracking:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Truck counts (GPS logged)</li>
+                        <li>• Survey depletions</li>
+                        <li>• Stockpile scans (weekly)</li>
+                        <li>• Stockpile sampling results</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Product Actuals:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Online analyzer data</li>
+                        <li>• Railed quantities & qualities</li>
+                        <li>• Port quantities & qualities</li>
+                        <li>• Customer acceptance results</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reconciliation Process */}
+                <div className="border-2 border-purple-300 rounded-lg p-4 bg-purple-50">
+                  <h3 className="font-bold text-purple-900 mb-3">Reconciliation Process</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Variance Analysis:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Volume reconciliation (±5% trigger)</li>
+                        <li>• Quality variance (±3% trigger)</li>
+                        <li>• Schedule adherence (&gt;80% target)</li>
+                        <li>• Cost variance analysis</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Investigation Triggers:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Variance &gt; threshold</li>
+                        <li>• Systematic bias detected</li>
+                        <li>• Quality specification breach</li>
+                        <li>• Customer complaints</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Feedback Loop:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Update block model assumptions</li>
+                        <li>• Adjust dig rate factors</li>
+                        <li>• Refine quality predictions</li>
+                        <li>• Optimize stockpile strategy</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-2 rounded">
+                      <div className="font-semibold">Reporting Frequency:</div>
+                      <ul className="ml-4 text-slate-700">
+                        <li>• Daily: Operational metrics</li>
+                        <li>• Weekly: Trend analysis</li>
+                        <li>• Monthly: Full reconciliation</li>
+                        <li>• Quarterly: Strategic review</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* KPI Dashboard */}
+              <div className="border-2 border-indigo-400 rounded-lg p-4 bg-indigo-50 mb-4">
+                <h3 className="font-bold text-indigo-900 mb-3">Key Performance Indicators Dashboard</h3>
+                <div className="grid md:grid-cols-4 gap-3 text-sm">
+                  <div className="bg-white p-3 rounded shadow-sm">
+                    <div className="text-xs text-slate-600 mb-1">Direct Feed Rate</div>
+                    <div className="text-2xl font-bold text-indigo-900">62%</div>
+                    <div className="text-xs text-green-600">Target: &gt;60%</div>
+                  </div>
+                  <div className="bg-white p-3 rounded shadow-sm">
+                    <div className="text-xs text-slate-600 mb-1">Avg Stockpile Residency</div>
+                    <div className="text-2xl font-bold text-indigo-900">23 days</div>
+                    <div className="text-xs text-green-600">Target: &lt;30 days</div>
+                  </div>
+                  <div className="bg-white p-3 rounded shadow-sm">
+                    <div className="text-xs text-slate-600 mb-1">Schedule Adherence</div>
+                    <div className="text-2xl font-bold text-indigo-900">84%</div>
+                    <div className="text-xs text-green-600">Target: &gt;80%</div>
+                  </div>
+                  <div className="bg-white p-3 rounded shadow-sm">
+                    <div className="text-xs text-slate-600 mb-1">Quality Variance</div>
+                    <div className="text-2xl font-bold text-indigo-900">±2.1%</div>
+                    <div className="text-xs text-green-600">Target: &lt;±3%</div>
+                  </div>
+                  <div className="bg-white p-3 rounded shadow-sm">
+                    <div className="text-xs text-slate-600 mb-1">CHPP Utilization</div>
+                    <div className="text-2xl font-bold text-indigo-900">78%</div>
+                    <div className="text-xs text-green-600">Target: 75-85%</div>
+                  </div>
+                  <div className="bg-white p-3 rounded shadow-sm">
+                    <div className="text-xs text-slate-600 mb-1">Stockpile Turnover</div>
+                    <div className="text-2xl font-bold text-indigo-900">12.4x/yr</div>
+                    <div className="text-xs text-green-600">Target: &gt;12x/yr</div>
+                  </div>
+                  <div className="bg-white p-3 rounded shadow-sm">
+                    <div className="text-xs text-slate-600 mb-1">Recon Accuracy</div>
+                    <div className="text-2xl font-bold text-indigo-900">94%</div>
+                    <div className="text-xs text-green-600">Target: &gt;90%</div>
+                  </div>
+                  <div className="bg-white p-3 rounded shadow-sm">
+                    <div className="text-xs text-slate-600 mb-1">Traceability Score</div>
+                    <div className="text-2xl font-bold text-indigo-900">High</div>
+                    <div className="text-xs text-slate-600">67% direct feed</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Continuous Improvement */}
+              <div className="border-2 border-green-400 rounded-lg p-4 bg-green-50">
+                <h3 className="font-bold text-green-900 mb-3">Continuous Improvement Cycle</h3>
+                <div className="grid md:grid-cols-3 gap-3 text-sm">
+                  <div className="bg-white p-3 rounded">
+                    <div className="font-semibold text-green-800 mb-2">1. Analyze</div>
+                    <ul className="ml-4 text-slate-700">
+                      <li>• Identify variance patterns</li>
+                      <li>• Root cause analysis</li>
+                      <li>• Benchmark performance</li>
+                      <li>• Capture lessons learned</li>
+                    </ul>
+                  </div>
+                  <div className="bg-white p-3 rounded">
+                    <div className="font-semibold text-green-800 mb-2">2. Improve</div>
+                    <ul className="ml-4 text-slate-700">
+                      <li>• Update model parameters</li>
+                      <li>• Refine decision criteria</li>
+                      <li>• Optimize processes</li>
+                      <li>• Train personnel</li>
+                    </ul>
+                  </div>
+                  <div className="bg-white p-3 rounded">
+                    <div className="font-semibold text-green-800 mb-2">3. Validate</div>
+                    <ul className="ml-4 text-slate-700">
+                      <li>• Monitor improved results</li>
+                      <li>• Verify assumptions</li>
+                      <li>• Document changes</li>
+                      <li>• Share best practices</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* SECTION 5: DOCUMENTATION & GOVERNANCE */}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <Database size={24} className="text-slate-600" />
+            5. DOCUMENTATION & GOVERNANCE
+          </h2>
+          
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="border-2 border-slate-300 rounded-lg p-4 bg-slate-50">
+              <h3 className="font-bold text-slate-800 mb-3">Required Documentation</h3>
+              <div className="space-y-2 text-sm text-slate-700">
+                <div className="flex items-start gap-2">
+                  <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                  <span><strong>Model Summary:</strong> Data sources, assumptions, limitations</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                  <span><strong>Stockpile Strategy:</strong> Flow diagram, depletion methods, constraints</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                  <span><strong>Schedule Runs:</strong> Scenarios tested, sensitivity analysis</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                  <span><strong>Risk Register:</strong> Identified risks, mitigation plans, triggers</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                  <span><strong>Reconciliation Reports:</strong> Monthly variance analysis</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                  <span><strong>Change Log:</strong> Version history, parameter updates</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-2 border-slate-300 rounded-lg p-4 bg-slate-50">
+              <h3 className="font-bold text-slate-800 mb-3">RACI Matrix (Key Activities)</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-200">
+                    <tr>
+                      <th className="p-2 text-left">Activity</th>
+                      <th className="p-1 text-center">R</th>
+                      <th className="p-1 text-center">A</th>
+                      <th className="p-1 text-center">C</th>
+                      <th className="p-1 text-center">I</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white text-slate-700">
+                    <tr className="border-b">
+                      <td className="p-2">Block Model Update</td>
+                      <td className="p-1 text-center">Geo</td>
+                      <td className="p-1 text-center">Tech</td>
+                      <td className="p-1 text-center">Ops</td>
+                      <td className="p-1 text-center">Plan</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="p-2">Routing Decision</td>
+                      <td className="p-1 text-center">Ops</td>
+                      <td className="p-1 text-center">Plan</td>
+                      <td className="p-1 text-center">Mkt</td>
+                      <td className="p-1 text-center">Fin</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="p-2">Stockpile Strategy</td>
+                      <td className="p-1 text-center">Plan</td>
+                      <td className="p-1 text-center">Tech</td>
+                      <td className="p-1 text-center">Ops</td>
+                      <td className="p-1 text-center">Mkt</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="p-2">Reconciliation</td>
+                      <td className="p-1 text-center">Tech</td>
+                      <td className="p-1 text-center">Plan</td>
+                      <td className="p-1 text-center">Ops</td>
+                      <td className="p-1 text-center">Mgmt</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2">Schedule Approval</td>
+                      <td className="p-1 text-center">Plan</td>
+                      <td className="p-1 text-center">Mgmt</td>
+                      <td className="p-1 text-center">All</td>
+                      <td className="p-1 text-center">Board</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-2 text-xs text-slate-600">
+                <strong>Key:</strong> R=Responsible, A=Accountable, C=Consulted, I=Informed<br/>
+                Geo=Geology, Tech=Technical, Ops=Operations, Plan=Planning, Mkt=Marketing, Fin=Finance, Mgmt=Management
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* SECTION 6: RISK MANAGEMENT */}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <AlertTriangle size={24} className="text-red-600" />
+            6. RISK MANAGEMENT & SCENARIOS
+          </h2>
+          
+          <div className="grid md:grid-cols-3 gap-4 mb-4">
+            <div className="border-2 border-red-300 rounded-lg p-4 bg-red-50">
+              <h3 className="font-bold text-red-900 mb-3">Weather Risks</h3>
+              <div className="space-y-2 text-sm">
+                <div className="bg-white p-2 rounded">
+                  <div className="font-semibold">Risk:</div>
+                  <p className="text-slate-700">Rainfall flooding pit, restricting access</p>
+                </div>
+                <div className="bg-white p-2 rounded">
+                  <div className="font-semibold">Mitigation:</div>
+                  <ul className="ml-4 text-slate-700">
+                    <li>• Pre-strip vulnerable areas</li>
+                    <li>• Build stockpile buffer &gt;30 days</li>
+                    <li>• Monitor weather forecasts</li>
+                  </ul>
+                </div>
+                <div className="bg-white p-2 rounded">
+                  <div className="font-semibold">Trigger:</div>
+                  <p className="text-slate-700">BoM forecast &gt;100mm in 7 days</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-2 border-orange-300 rounded-lg p-4 bg-orange-50">
+              <h3 className="font-bold text-orange-900 mb-3">Geotechnical Risks</h3>
+              <div className="space-y-2 text-sm">
+                <div className="bg-white p-2 rounded">
+                  <div className="font-semibold">Risk:</div>
+                  <p className="text-slate-700">Highwall instability delays mining</p>
+                </div>
+                <div className="bg-white p-2 rounded">
+                  <div className="font-semibold">Mitigation:</div>
+                  <ul className="ml-4 text-slate-700">
+                    <li>• Regular monitoring program</li>
+                    <li>• Alternative mining sequence</li>
+                    <li>• Maintain flexible schedule</li>
+                  </ul>
+                </div>
+                <div className="bg-white p-2 rounded">
+                  <div className="font-semibold">Trigger:</div>
+                  <p className="text-slate-700">Movement &gt;10mm/day detected</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-2 border-yellow-300 rounded-lg p-4 bg-yellow-50">
+              <h3 className="font-bold text-yellow-900 mb-3">Quality Risks</h3>
+              <div className="space-y-2 text-sm">
+                <div className="bg-white p-2 rounded">
+                  <div className="font-semibold">Risk:</div>
+                  <p className="text-slate-700">Coal quality outside customer spec</p>
+                </div>
+                <div className="bg-white p-2 rounded">
+                  <div className="font-semibold">Mitigation:</div>
+                  <ul className="ml-4 text-slate-700">
+                    <li>• Increase sampling density</li>
+                    <li>• Implement blending strategy</li>
+                    <li>• Maintain quality buffer stock</li>
+                  </ul>
+                </div>
+                <div className="bg-white p-2 rounded">
+                  <div className="font-semibold">Trigger:</div>
+                  <p className="text-slate-700">Variance &gt;5% from model prediction</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-2 border-indigo-400 rounded-lg p-4 bg-indigo-50">
+            <h3 className="font-bold text-indigo-900 mb-3">Scenario Planning</h3>
+            <div className="grid md:grid-cols-3 gap-3 text-sm">
+              <div className="bg-white p-3 rounded">
+                <div className="font-semibold text-indigo-800 mb-2">Base Case</div>
+                <ul className="ml-4 text-slate-700">
+                  <li>• Normal operations</li>
+                  <li>• Weather as forecast</li>
+                  <li>• 80% schedule adherence</li>
+                  <li>• 60% direct feed rate</li>
+                </ul>
+              </div>
+              <div className="bg-white p-3 rounded">
+                <div className="font-semibold text-indigo-800 mb-2">Optimistic</div>
+                <ul className="ml-4 text-slate-700">
+                  <li>• Dry weather extended</li>
+                  <li>• High equipment availability</li>
+                  <li>• 90% schedule adherence</li>
+                  <li>• 70% direct feed rate</li>
+                </ul>
+              </div>
+              <div className="bg-white p-3 rounded">
+                <div className="font-semibold text-indigo-800 mb-2">Pessimistic</div>
+                <ul className="ml-4 text-slate-700">
+                  <li>• Wet season early</li>
+                  <li>• Equipment breakdowns</li>
+                  <li>• 65% schedule adherence</li>
+                  <li>• 45% direct feed rate</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* SECTION 7: INTEGRATION POINTS */}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-bold text-slate-800 mb-4">7. SYSTEM INTEGRATION POINTS</h2>
+          
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="border-2 border-blue-300 rounded-lg p-4 bg-blue-50">
+              <h3 className="font-bold text-blue-900 mb-3">Upstream Interfaces</h3>
+              <div className="space-y-2 text-sm">
+                <div className="bg-white p-2 rounded flex items-start gap-2">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <strong>Geology Database:</strong> Block model, drill results, quality predictions
+                  </div>
+                </div>
+                <div className="bg-white p-2 rounded flex items-start gap-2">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <strong>Survey Systems:</strong> Face positions, stockpile volumes, topography
+                  </div>
+                </div>
+                <div className="bg-white p-2 rounded flex items-start gap-2">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <strong>Maintenance System:</strong> Equipment availability, planned shutdowns
+                  </div>
+                </div>
+                <div className="bg-white p-2 rounded flex items-start gap-2">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <strong>Weather Services:</strong> Forecasts, rainfall data, seasonal predictions
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-2 border-purple-300 rounded-lg p-4 bg-purple-50">
+              <h3 className="font-bold text-purple-900 mb-3">Downstream Interfaces</h3>
+              <div className="space-y-2 text-sm">
+                <div className="bg-white p-2 rounded flex items-start gap-2">
+                  <div className="w-2 h-2 bg-purple-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <strong>Sales & Marketing:</strong> Customer orders, contract specifications, pricing
+                  </div>
+                </div>
+                <div className="bg-white p-2 rounded flex items-start gap-2">
+                  <div className="w-2 h-2 bg-purple-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <strong>Supply Chain:</strong> Rail scheduling, port allocation, vessel lineup
+                  </div>
+                </div>
+                <div className="bg-white p-2 rounded flex items-start gap-2">
+                  <div className="w-2 h-2 bg-purple-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <strong>Financial Systems:</strong> Cost tracking, margin analysis, working capital
+                  </div>
+                </div>
+                <div className="bg-white p-2 rounded flex items-start gap-2">
+                  <div className="w-2 h-2 bg-purple-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <strong>Environmental:</strong> Dust monitoring, water quality, compliance reporting
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Summary */}
+        <div className="bg-gradient-to-r from-slate-700 to-slate-900 text-white rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-bold mb-3">Summary: Best Practices for Success</h2>
+          <div className="grid md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <h3 className="font-semibold mb-2 text-blue-300">Data Excellence</h3>
+              <ul className="space-y-1">
+                <li>• Maintain data quality standards</li>
+                <li>• Document all assumptions</li>
+                <li>• Version control everything</li>
+                <li>• Regular validation cycles</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2 text-green-300">Operational Discipline</h3>
+              <ul className="space-y-1">
+                <li>• Follow decision criteria consistently</li>
+                <li>• Maximize direct feed opportunities</li>
+                <li>• Minimize stockpile residency</li>
+                <li>• Proactive risk management</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2 text-purple-300">Continuous Learning</h3>
+              <ul className="space-y-1">
+                <li>• Monthly reconciliation reviews</li>
+                <li>• Capture lessons learned</li>
+                <li>• Update models with actuals</li>
+                <li>• Share best practices</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-slate-800 rounded text-center">
+            <p className="font-semibold">Key Success Metric: <span className="text-green-400">Reconciliation Accuracy &gt;90%</span> + <span className="text-blue-400">Direct Feed &gt;60%</span> = <span className="text-yellow-400">Optimized Operations</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CoalMiningFlowChart;
