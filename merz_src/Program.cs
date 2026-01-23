@@ -313,107 +313,100 @@ namespace merz
 
         static void EntryPointForm(List<EntryPoint> entryPoints)
         {
-            //create a start a new thread for the form
-            System.Threading.Thread formThread = new System.Threading.Thread(() =>
+            LogDebug("EntryPointForm called. Running on main thread...");
+
+            try
             {
-                try
+                var grps = entryPoints.GroupBy(x => x.group).OrderBy(x => x.Key).ToList();
+                var version = GetCurrentVersion();
+
+                // Create the form
+                var form = OptionsForm.Create("Merz " + "V: " + version);
+
+                string latestGitHubTag = GetLatestGitHubVersionAsync().GetAwaiter().GetResult();
+                if (!string.IsNullOrEmpty(latestGitHubTag))
                 {
-                    var grps = entryPoints.GroupBy(x => x.group).OrderBy(x => x.Key).ToList();
-                    var version = GetCurrentVersion();
+                    string latestVersionStr = latestGitHubTag.TrimStart('v'); // "1.0.1" or "1.2.3-beta"
 
-                    // Create the form
-                    var form = OptionsForm.Create("Merz " + "V: " + version);
+                    // Prepare version strings for System.Version parsing by removing pre-release identifiers
+                    string parsableVersion = version.Split('-')[0];
+                    string parsableLatestVersionStr = latestVersionStr.Split('-')[0];
 
-                    string latestGitHubTag = GetLatestGitHubVersionAsync().GetAwaiter().GetResult();
-                    if (!string.IsNullOrEmpty(latestGitHubTag))
+                    if (Version.TryParse(parsableVersion, out Version currentV) &&
+                        Version.TryParse(parsableLatestVersionStr, out Version latestV))
                     {
-                        string latestVersionStr = latestGitHubTag.TrimStart('v'); // "1.0.1" or "1.2.3-beta"
-
-                        // Prepare version strings for System.Version parsing by removing pre-release identifiers
-                        string parsableVersion = version.Split('-')[0];
-                        string parsableLatestVersionStr = latestVersionStr.Split('-')[0];
-
-                        if (Version.TryParse(parsableVersion, out Version currentV) &&
-                            Version.TryParse(parsableLatestVersionStr, out Version latestV))
+                        if (latestV > currentV)
                         {
-                            if (latestV > currentV)
-                            {
-                                form.Options.AddTextLabel($"New version available: {latestVersionStr}");
+                            form.Options.AddTextLabel($"New version available: {latestVersionStr}");
 
-                                form.Options.AddButtonEdit("Download Update")
-                                    .SetClickAction(action =>
+                            form.Options.AddButtonEdit("Download Update")
+                                .SetClickAction(action =>
+                                {
+                                    try
                                     {
-                                        try
+                                        // Open the download link in the default browser
+                                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                                         {
-                                            // Open the download link in the default browser
-                                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                                            {
-                                                FileName = "https://github.com/precision-mining-consulting/merz/releases/latest",
-                                                UseShellExecute = true // Important for opening URLs
-                                            });
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            Console.WriteLine($"Error opening download link: {ex.Message}");
-                                        }
-                                    });
-                            }
+                                            FileName = "https://github.com/precision-mining-consulting/merz/releases/latest",
+                                            UseShellExecute = true // Important for opening URLs
+                                        });
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine($"Error opening download link: {ex.Message}");
+                                    }
+                                });
+                        }
 
+                    }
+                    else
+                    {
+                        LogDebug($"Could not parse versions for comparison. Current: '{version}', Latest from GitHub: '{latestVersionStr}'");
+                    }
+                }
+
+                foreach (var grp in grps)
+                {
+                    form.Options.BeginGroup(grp.Key).SetExpandable(true, true);
+                    var names = grp.GroupBy(x => x.name).OrderBy(x => x.Key).ToList();
+
+                    foreach (var name in names)
+                    {
+                        var items = name.OrderBy(x => x.subname).ToList();
+                        if (items.Count > 1)
+                        {
+                            form.Options.AddButtonEdit(name.Key).SetClickAction(x =>
+                            {
+                                form.Dispose();
+                                // Call directly on the same thread
+                                SubForm(items);
+                            });
                         }
                         else
                         {
-                            LogDebug($"Could not parse versions for comparison. Current: '{version}', Latest from GitHub: '{latestVersionStr}'");
+                            var i = items.First();
+                            form.Options.AddButtonEdit(i.name).SetClickAction(x =>
+                            {
+                                form.Dispose();
+                                InvokeEntryPoint(i);
+                            });
                         }
                     }
 
-                    foreach (var grp in grps)
-                    {
-                        form.Options.BeginGroup(grp.Key).SetExpandable(true, true);
-                        var names = grp.GroupBy(x => x.name).OrderBy(x => x.Key).ToList();
-
-                        foreach (var name in names)
-                        {
-                            var items = name.OrderBy(x => x.subname).ToList();
-                            if (items.Count > 1)
-                            {
-                                form.Options.AddButtonEdit(name.Key).SetClickAction(x =>
-                                {
-                                    form.Dispose();
-                                    // Launch SubForm in a new thread to avoid blocking
-                                    LaunchSubFormInThread(items);
-                                });
-                            }
-                            else
-                            {
-                                var i = items.First();
-                                form.Options.AddButtonEdit(i.name).SetClickAction(x =>
-                                {
-                                    form.Dispose();
-                                    // Call InvokeEntryPoint directly since it's not a UI operation
-                                    InvokeEntryPoint(i);
-                                });
-                            }
-                        }
-
-                        form.Options.EndGroup();
-                    }
-
-                    // Optional: Re-enable update check functionality
-                    // SpawnCheckForUpdates(updateLabel);
-
-                    // Show the form - this is blocking but only for this thread
-                    form.ShowDialog();
+                    form.Options.EndGroup();
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Form thread error: " + ex.Message);
-                    Console.WriteLine(ex.StackTrace);
-                }
-            });
-            formThread.SetApartmentState(System.Threading.ApartmentState.STA);
-            formThread.IsBackground = true;
-            formThread.Start();
 
+                // Optional: Re-enable update check functionality
+                // SpawnCheckForUpdates(updateLabel);
+
+                // Show the form - this is blocking but only for this thread
+                form.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Form error: " + ex.Message);
+                Console.WriteLine(ex.StackTrace);
+            }
         }
 
         private static async Task<string> GetLatestGitHubVersionAsync()
@@ -443,23 +436,7 @@ namespace merz
                 throw new Exception("Could not find 'tag_name' in GitHub API response.");
             }
         }
-        static void LaunchSubFormInThread(List<EntryPoint> items)
-        {
-            System.Threading.Thread subFormThread = new System.Threading.Thread(() =>
-            {
-                try
-                {
-                    SubForm(items);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("SubForm thread error: " + ex.Message);
-                }
-            });
-
-            subFormThread.SetApartmentState(System.Threading.ApartmentState.STA);
-            subFormThread.Start();
-        }
+        // Removed LaunchSubFormInThread as it is no longer used
         static void SubForm(List<EntryPoint> subEntryPoints)
         {
             if (subEntryPoints.Count == 0)
@@ -509,6 +486,10 @@ namespace merz
                 });
                 thread.SetApartmentState(System.Threading.ApartmentState.STA);
                 thread.Start();
+
+                // Ensure the main thread waits for the tool to complete
+                // This prevents the application from closing immediately after the button click
+                thread.Join();
 
             }
             else
