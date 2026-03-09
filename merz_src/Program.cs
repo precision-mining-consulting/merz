@@ -323,7 +323,21 @@ namespace merz
                 // Create the form
                 var form = OptionsForm.Create("Merz " + "V: " + version);
 
-                string latestGitHubTag = GetLatestGitHubVersionAsync().GetAwaiter().GetResult();
+                string latestGitHubTag = null;
+                var config = LoadConfig();
+               
+                if (config.LastVersionCheck.HasValue && config.LastVersionCheck.Value.Date == DateTime.Today)
+                {
+                    LogDebug("Version check skipped (already checked today).");
+                }
+                else
+                {
+                    latestGitHubTag = GetLatestGitHubVersionAsync().GetAwaiter().GetResult();
+                    // Always update logic to prevent spamming even if fetch failed to prevent constant retries on error
+                    config.LastVersionCheck = DateTime.Now;
+                    SaveConfig(config);
+                }
+
                 if (!string.IsNullOrEmpty(latestGitHubTag))
                 {
                     string latestVersionStr = latestGitHubTag.TrimStart('v'); // "1.0.1" or "1.2.3-beta"
@@ -411,29 +425,37 @@ namespace merz
 
         private static async Task<string> GetLatestGitHubVersionAsync()
         {
-            using (var httpClient = new HttpClient())
+            try
             {
-                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("MerzVersionChecker/1.0"); // GitHub API requires a User-Agent
-                var response = await httpClient.GetAsync("https://api.github.com/repos/precision-mining-consulting/merz/releases/latest");
-                response.EnsureSuccessStatusCode(); // Throws if not successful
-                var responseBody = await response.Content.ReadAsStringAsync();
-
-                // using (JsonDocument doc = JsonDocument.Parse(responseBody))
-                // {
-                //     JsonElement root = doc.RootElement;
-                //     if (root.TryGetProperty("tag_name", out JsonElement tagNameElement))
-                //     {
-                //         return tagNameElement.GetString();
-                //     }
-                // }
-
-                var json = JObject.Parse(responseBody);
-                string tagName = json["tag_name"]?.ToString();
-                if( !string.IsNullOrEmpty(tagName))
+                using (var httpClient = new HttpClient())
                 {
-                    return tagName;
+                    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("MerzVersionChecker/1.0"); // GitHub API requires a User-Agent
+                    httpClient.Timeout = TimeSpan.FromSeconds(5); // Add timeout to prevent hanging
+                    
+                    var response = await httpClient.GetAsync("https://api.github.com/repos/precision-mining-consulting/merz/releases/latest");
+                    
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        LogDebug($"GitHub version check failed with status: {response.StatusCode}");
+                        return null;
+                    }
+                    
+                    var responseBody = await response.Content.ReadAsStringAsync();
+
+                    var json = JObject.Parse(responseBody);
+                    string tagName = json["tag_name"]?.ToString();
+                    if( !string.IsNullOrEmpty(tagName))
+                    {
+                        return tagName;
+                    }
+                    LogDebug("Could not find 'tag_name' in GitHub API response.");
+                    return null;
                 }
-                throw new Exception("Could not find 'tag_name' in GitHub API response.");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"Exception during GitHub version check: {ex.Message}");
+                return null;
             }
         }
         // Removed LaunchSubFormInThread as it is no longer used
@@ -694,5 +716,6 @@ namespace merz
     public class MerzConfig
     {
         public List<ToolConfig> Tools { get; set; } = new List<ToolConfig>();
+        public DateTime? LastVersionCheck { get; set; }
     }
 }
