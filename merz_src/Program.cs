@@ -34,6 +34,7 @@ namespace merz
             if (args.Contains("--debug"))
             {
                 IsDebugMode = true;
+                CustomProgress.DEBUG = true;
             }
 
             if (args.Contains("run-last"))
