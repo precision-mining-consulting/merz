@@ -34,7 +34,6 @@ namespace merz
             if (args.Contains("--debug"))
             {
                 IsDebugMode = true;
-                CustomProgress.DEBUG = true;
             }
 
             if (args.Contains("run-last"))
@@ -121,15 +120,44 @@ namespace merz
 
             LoadMerzAssembly(assemblyPath);
         }
+
+        static void SetCustomProgressDebug(bool enabled)
+        {
+            try
+            {
+                foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    Type type = asm.GetType("PrecisionMining.Spry.Util.UI.CustomProgress");
+                    if (type != null)
+                    {
+                        var field = type.GetField("DEBUG", BindingFlags.Public | BindingFlags.Static);
+                        if (field != null)
+                        {
+                            field.SetValue(null, enabled);
+                            LogDebug($"Set CustomProgress.DEBUG to {enabled}");
+                            return; 
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogDebug("Failed to set CustomProgress.DEBUG: " + ex.Message);
+            }
+        }
+
         static void RunLast()
         {
             LoadLatestAssembly();
 
             if (LAST_RUN == null || LAST_RUN.ep == null || LAST_RUN.name == null)
+            {
                 RunOpen();
+            }
             else
             {
                 BringInSpry();
+                SetCustomProgressDebug(IsDebugMode);
 
                 LogDebug("Running the last MERZ tool: " + LAST_RUN.name);
 
@@ -159,6 +187,7 @@ namespace merz
             BringInSpry();
 
             var entryPoints = CollectEntryPmSpryToolsEntryPoints();
+            SetCustomProgressDebug(IsDebugMode);
             EntryPointForm(entryPoints);
         }
 
