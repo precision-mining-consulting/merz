@@ -354,6 +354,8 @@ namespace merz
                 var form = OptionsForm.Create("Merz " + "V: " + version);
 
                 string latestGitHubTag = null;
+                /* 
+                // Version check disabled to prevent 403 Forbidden / Rate Limit issues
                 var config = LoadConfig();
                
                 if (config.LastVersionCheck.HasValue && config.LastVersionCheck.Value.Date == DateTime.Today)
@@ -367,6 +369,7 @@ namespace merz
                     config.LastVersionCheck = DateTime.Now;
                     SaveConfig(config);
                 }
+                */
 
                 if (!string.IsNullOrEmpty(latestGitHubTag))
                 {
