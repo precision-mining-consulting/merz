@@ -6,27 +6,14 @@ using System.Collections.Generic;
 using PrecisionMining.Spry.Util.OptionsForm;
 using Progress = PrecisionMining.Spry.Util.UI;
 using PrecisionMining.Spry;
-using System.Threading.Tasks;
-using System.Net.Http;
-// 1. Replace System.Text.Json with Newtonsoft.Json
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace merz
 {
     public class Program
     {
         static LastRun LAST_RUN;
-        private static Assembly _currentAssembly;
         private static bool IsDebugMode = false;
-
-        private static readonly string MerzBasePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Programs",
-            "merz"
-        );
-
-        private static readonly string ConfigFileName = "merz-config.json";
 
         [STAThread]
         static void Main(string[] args)
@@ -36,10 +23,19 @@ namespace merz
                 IsDebugMode = true;
             }
 
-            if (args.Contains("run-last"))
-                RunLast();
-            else
-                RunOpen();
+            try 
+            {
+                BringInSpry();
+
+                if (args.Contains("run-last"))
+                    RunLast();
+                else
+                    RunOpen();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Fatal Initialization Error: " + ex.Message);
+            }
         }
 
         static void LogDebug(string message)
@@ -50,81 +46,11 @@ namespace merz
             }
         }
 
-        static string GetLatestMerzAssemblyPath()
-        {
-            if (Directory.Exists(MerzBasePath))
-            {
-                string[] versionDirs = Directory.GetDirectories(MerzBasePath, "v*");
-                var sortedDirs = versionDirs
-                    .Select(dir => {
-                        string dirName = Path.GetFileName(dir);
-                        string versionStr = dirName.TrimStart('v');
-                        Version.TryParse(versionStr, out Version version);
-                        return new { Path = dir, Version = version };
-                    })
-                    .Where(x => x.Version != null) // Filter out any directories that couldn't be parsed
-                    .OrderByDescending(x => x.Version)
-                    .Select(x => x.Path)
-                    .ToArray();
-
-                if (sortedDirs.Length > 0)
-                {
-                    string assemblyPath = Path.Combine(sortedDirs[0], "merz.exe");
-                    if (File.Exists(assemblyPath))
-                        return assemblyPath;
-                }
-            }
-            // Fallback to non-versioned path if no versioned directories found or merz.exe is missing
-            return Path.Combine(MerzBasePath, "merz.exe");
-        }
-
-        static void LoadMerzAssembly(string path)
-        {
-            if (_currentAssembly != null)
-            {
-                try
-                {
-                    // Assuming Project is available via PrecisionMining.Spry using
-                    if (Project.ActiveProject != null && Project.ActiveProject.Scripting != null)
-                    {
-                        Project.ActiveProject.Scripting.ReferencedAssemblies.Remove(_currentAssembly.FullName);
-                    }
-                    _currentAssembly = null;
-                    GC.Collect();
-                    GC.WaitForPendingFinalizers();
-                }
-                catch (Exception ex)
-                {
-                    LogDebug("Warning: Could not unload previous assembly: " + ex.Message);
-                }
-            }
-
-            try
-            {
-                _currentAssembly = Assembly.LoadFrom(path);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Failed to load assembly from {path}: {ex.Message}");
-            }
-        }
-
-        static void LoadLatestAssembly()
-        {
-            string assemblyPath = GetLatestMerzAssemblyPath();
-            Out.WriteLine("Loading assembly from: " + assemblyPath);
-            if (!File.Exists(assemblyPath))
-            {
-                throw new Exception("Could not find merz assembly in any location");
-            }
-
-            LoadMerzAssembly(assemblyPath);
-        }
-
         static void SetCustomProgressDebug(bool enabled)
         {
             try
             {
+                // This remains a reflection hack for compatibility with Spry's CustomProgress
                 foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
                 {
                     Type type = asm.GetType("PrecisionMining.Spry.Util.UI.CustomProgress");
@@ -148,55 +74,44 @@ namespace merz
 
         static void RunLast()
         {
-            LoadLatestAssembly();
-
             if (LAST_RUN == null || LAST_RUN.ep == null || LAST_RUN.name == null)
             {
                 RunOpen();
             }
             else
             {
-                BringInSpry();
                 SetCustomProgressDebug(IsDebugMode);
-
                 LogDebug("Running the last MERZ tool: " + LAST_RUN.name);
-
                 InvokeEntryPoint(LAST_RUN.ep);
             }
         }
+
         static string GetCurrentVersion()
         {
-            Assembly assembly = _currentAssembly ?? Assembly.GetExecutingAssembly();
+            Assembly assembly = Assembly.GetExecutingAssembly();
             string assemblyPath = assembly.Location;
 
-            // The version is assumed to be the name of the directory containing the assembly.
             string version = new DirectoryInfo(Path.GetDirectoryName(assemblyPath)).Name;
 
-            // If the folder is like 'v1.4', strip the 'v'.
             if (version.StartsWith("v"))
             {
                 return version.Substring(1);
             }
 
-            // Otherwise, return the folder name as is (e.g., '0.0.0-dev-baher-250619')
             return version;
         }
+
         static void RunOpen()
         {
-            LoadLatestAssembly();
-            BringInSpry();
-
-            var entryPoints = CollectEntryPmSpryToolsEntryPoints();
+            var entryPoints = ToolRegistry.DiscoverAndFilterTools();
             SetCustomProgressDebug(IsDebugMode);
             EntryPointForm(entryPoints);
         }
 
         static void BringInSpry(string version = null)
         {
-
-            var spry = Assembly.GetEntryAssembly().Location;
-            //Console.WriteLine("Spry location: " + spry);
-            if (!File.Exists(spry) || !(spry.EndsWith("Spry.exe") || spry.EndsWith("SpryBeta.exe") || spry.EndsWith("SpryAlpha.exe")))
+            var spry = Assembly.GetEntryAssembly()?.Location;
+            if (spry == null || !File.Exists(spry) || !(spry.EndsWith("Spry.exe") || spry.EndsWith("SpryBeta.exe") || spry.EndsWith("SpryAlpha.exe")))
             {
                 var msg = "[ERROR]: Could not find a Spry installation, is this being run through Spry?";
                 Console.WriteLine(msg);
@@ -205,140 +120,11 @@ namespace merz
 
             AppDomain.CurrentDomain.AssemblyResolve += (o, e) =>
             {
-                //Console.WriteLine("Linking assembly: " + e.Name);
                 if (new AssemblyName(e.Name).Name == "Spry")
                     return Assembly.LoadFrom(spry);
 
                 return null;
             };
-        }
-
-        private static IEnumerable<EntryPoint> ScanAssemblyForEntryPoints(Assembly assembly)
-        {
-            if (assembly == null)
-            {
-                LogDebug("Warning: Assembly to scan is null.");
-                return Enumerable.Empty<EntryPoint>();
-            }
-
-            try
-            {
-                LogDebug($"Attempting to scan assembly: {assembly.FullName}");
-                var types = assembly.GetTypes();
-                var entryPoints = types
-                    .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-                    .Where(m => m.GetCustomAttribute(typeof(PackAttribute), false) != null)
-                    .Select(m => EntryPoint.FromAttrMethod(m));
-                LogDebug($"Successfully loaded and scanned types from: {assembly.FullName}");
-                return entryPoints;
-            }
-            catch (ReflectionTypeLoadException ex)
-            {
-                LogDebug($"Error: Could not load one or more types from assembly ({assembly.FullName}). See LoaderExceptions below:");
-                if (ex.LoaderExceptions != null)
-                {
-                    foreach (Exception loaderEx in ex.LoaderExceptions)
-                        {
-                            LogDebug($"- LoaderException: {loaderEx?.Message}");
-                            if (loaderEx is FileNotFoundException fnfEx)
-                            {
-                                LogDebug($"  Missing file: {fnfEx.FileName}");
-                            }
-                        }
-                }
-                else
-                {
-                    LogDebug("LoaderExceptions collection is null for the assembly.");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogDebug($"An unexpected error occurred while processing types from assembly ({assembly.FullName}): {ex.Message}");
-            }
-            return Enumerable.Empty<EntryPoint>();
-        }
-
-        static List<EntryPoint> CollectEntryPmSpryToolsEntryPoints()
-        {
-            var args = new List<string> { };
-            var allEntryPoints = new List<EntryPoint>();
-            Assembly mainAssembly = _currentAssembly ?? Assembly.GetExecutingAssembly();
-
-            // Scan the main assembly (merz.exe)
-            allEntryPoints.AddRange(ScanAssemblyForEntryPoints(mainAssembly));
-
-            // Scan Scripts.dll
-            if (mainAssembly != null && !string.IsNullOrEmpty(mainAssembly.Location))
-            {
-                string baseDirectory = Path.GetDirectoryName(mainAssembly.Location);
-                string scriptsDllPath = Path.Combine(baseDirectory, "Scripts.dll");
-
-                if (File.Exists(scriptsDllPath))
-                {
-                    try
-                    {
-                        Assembly scriptsAssembly = Assembly.LoadFrom(scriptsDllPath);
-                        allEntryPoints.AddRange(ScanAssemblyForEntryPoints(scriptsAssembly));
-                    }
-                    catch (Exception ex)
-                    {
-                        LogDebug($"Warning: Could not load Scripts.dll from {scriptsDllPath}. Error: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    LogDebug($"Warning: Scripts.dll not found at {scriptsDllPath}. Entry points from it will not be loaded.");
-                }
-            }
-            else
-            {
-                LogDebug("Warning: Main assembly location is unknown. Cannot determine path for Scripts.dll.");
-            }
-
-            // Remove duplicates first
-            var uniqueEntryPoints = allEntryPoints.GroupBy(ep => $"{ep.group}_{ep.name}_{ep.subname}").Select(g => g.First()).ToList();
-            
-            // Generate/update config file with all discovered tools
-            GenerateConfigFromDiscoveredTools(uniqueEntryPoints);
-            
-            // Load config and filter by enabled tools
-            var config = LoadConfig();
-            var enabledTools = config.Tools.Where(t => t.Enabled).ToList();
-            
-            LogDebug($"Config has {enabledTools.Count} enabled tools out of {config.Tools.Count} total");
-            
-            // If no config exists or all tools disabled, show all tools
-            if (!enabledTools.Any())
-            {
-                LogDebug("No enabled tools in config, showing all discovered tools");
-                return uniqueEntryPoints;
-            }
-            
-            // Filter entry points by enabled tools in config
-            var filteredEntryPoints = uniqueEntryPoints.Where(ep =>
-            {
-                bool isEnabled = enabledTools.Any(tool => 
-                    tool.Group == ep.group && 
-                    tool.Name == ep.name && 
-                    (tool.Sub ?? "") == (ep.subname ?? ""));
-                
-                if (!isEnabled)
-                {
-                    LogDebug($"Filtering out: {ep.group} -> {ep.name} -> {ep.subname}");
-                }
-                
-                return isEnabled;
-            }).ToList();
-
-            // Apply additional group filtering if specified
-            if (args != null && args.Count > 0)
-            {
-                LogDebug("Filtering entry points by groups: " + string.Join(", ", args));
-                filteredEntryPoints = filteredEntryPoints.Where(ep => args.Contains(ep.group)).ToList();
-            }
-
-            // LogDebug($"Loaded {filteredEntryPoints.Count} enabled tools from {uniqueEntryPoints.Count} discovered tools");
-            return filteredEntryPoints;
         }
 
         static void EntryPointForm(List<EntryPoint> entryPoints)
@@ -350,67 +136,7 @@ namespace merz
                 var grps = entryPoints.GroupBy(x => x.group).OrderBy(x => x.Key).ToList();
                 var version = GetCurrentVersion();
 
-                // Create the form
-                var form = OptionsForm.Create("Merz " + "V: " + version);
-
-                string latestGitHubTag = null;
-                /* 
-                // Version check disabled to prevent 403 Forbidden / Rate Limit issues
-                var config = LoadConfig();
-               
-                if (config.LastVersionCheck.HasValue && config.LastVersionCheck.Value.Date == DateTime.Today)
-                {
-                    LogDebug("Version check skipped (already checked today).");
-                }
-                else
-                {
-                    latestGitHubTag = GetLatestGitHubVersionAsync().GetAwaiter().GetResult();
-                    // Always update logic to prevent spamming even if fetch failed to prevent constant retries on error
-                    config.LastVersionCheck = DateTime.Now;
-                    SaveConfig(config);
-                }
-                */
-
-                if (!string.IsNullOrEmpty(latestGitHubTag))
-                {
-                    string latestVersionStr = latestGitHubTag.TrimStart('v'); // "1.0.1" or "1.2.3-beta"
-
-                    // Prepare version strings for System.Version parsing by removing pre-release identifiers
-                    string parsableVersion = version.Split('-')[0];
-                    string parsableLatestVersionStr = latestVersionStr.Split('-')[0];
-
-                    if (Version.TryParse(parsableVersion, out Version currentV) &&
-                        Version.TryParse(parsableLatestVersionStr, out Version latestV))
-                    {
-                        if (latestV > currentV)
-                        {
-                            form.Options.AddTextLabel($"New version available: {latestVersionStr}");
-
-                            form.Options.AddButtonEdit("Download Update")
-                                .SetClickAction(action =>
-                                {
-                                    try
-                                    {
-                                        // Open the download link in the default browser
-                                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                                        {
-                                            FileName = "https://github.com/precision-mining-consulting/merz/releases/latest",
-                                            UseShellExecute = true // Important for opening URLs
-                                        });
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Console.WriteLine($"Error opening download link: {ex.Message}");
-                                    }
-                                });
-                        }
-
-                    }
-                    else
-                    {
-                        LogDebug($"Could not parse versions for comparison. Current: '{version}', Latest from GitHub: '{latestVersionStr}'");
-                    }
-                }
+                var form = OptionsForm.Create("Merz V: " + version);
 
                 foreach (var grp in grps)
                 {
@@ -425,7 +151,6 @@ namespace merz
                             form.Options.AddButtonEdit(name.Key).SetClickAction(x =>
                             {
                                 form.Dispose();
-                                // Call directly on the same thread
                                 SubForm(items);
                             });
                         }
@@ -443,10 +168,6 @@ namespace merz
                     form.Options.EndGroup();
                 }
 
-                // Optional: Re-enable update check functionality
-                // SpawnCheckForUpdates(updateLabel);
-
-                // Show the form - this is blocking but only for this thread
                 form.ShowDialog();
             }
             catch (Exception ex)
@@ -456,42 +177,6 @@ namespace merz
             }
         }
 
-        private static async Task<string> GetLatestGitHubVersionAsync()
-        {
-            try
-            {
-                using (var httpClient = new HttpClient())
-                {
-                    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("MerzVersionChecker/1.0"); // GitHub API requires a User-Agent
-                    httpClient.Timeout = TimeSpan.FromSeconds(5); // Add timeout to prevent hanging
-                    
-                    var response = await httpClient.GetAsync("https://api.github.com/repos/precision-mining-consulting/merz/releases/latest");
-                    
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        LogDebug($"GitHub version check failed with status: {response.StatusCode}");
-                        return null;
-                    }
-                    
-                    var responseBody = await response.Content.ReadAsStringAsync();
-
-                    var json = JObject.Parse(responseBody);
-                    string tagName = json["tag_name"]?.ToString();
-                    if( !string.IsNullOrEmpty(tagName))
-                    {
-                        return tagName;
-                    }
-                    LogDebug("Could not find 'tag_name' in GitHub API response.");
-                    return null;
-                }
-            }
-            catch (Exception ex)
-            {
-                LogDebug($"Exception during GitHub version check: {ex.Message}");
-                return null;
-            }
-        }
-        // Removed LaunchSubFormInThread as it is no longer used
         static void SubForm(List<EntryPoint> subEntryPoints)
         {
             if (subEntryPoints.Count == 0)
@@ -524,46 +209,16 @@ namespace merz
                 name = n
             };
 
-            if (ep.runInSeparateThread)
-            {
-                // Create and run a new thread for this entry point
-                System.Threading.Thread thread = new System.Threading.Thread(() =>
-                {
-                    try
-                    {
-                        RunEntryPointAction(ep, n);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Thread error in {n}: {ex.Message}");
-                        Console.WriteLine("Stack Trace: " + ex.StackTrace);
-                    }
-                });
-                thread.SetApartmentState(System.Threading.ApartmentState.STA);
-                thread.Start();
-
-                // Ensure the main thread waits for the tool to complete
-                // This prevents the application from closing immediately after the button click
-                thread.Join();
-
-            }
-            else
-            {
-                // Original behavior - run directly in current thread
-                RunEntryPointAction(ep, n);
-            }
-        }
-
-        static void RunEntryPointAction(EntryPoint ep, string n)
-        {
+            // Streamlined Execution: Run synchronously on the main thread.
+            // Spry UI remains frozen during execution to prevent concurrent data modification.
             try
             {
+                LogDebug($"Executing {n} synchronously...");
                 ep.invoke();
                 PrecisionMining.Spry.Progress.Label = "Finished " + n;
             }
             catch (Exception e)
             {
-                // Your existing error handling code
                 PrecisionMining.Spry.Progress.Label = "FAILED " + n;
                 System.Windows.Forms.MessageBox.Show(
                     text: "Routine threw an error. Please review Spry's output window for the cause of the error.",
@@ -575,14 +230,11 @@ namespace merz
                 if (e.InnerException != null)
                     OutputException(e.InnerException);
             }
-
         }
-
 
         static void OutputException(Exception e)
         {
             OutputException("", e);
-
             Console.WriteLine("");
             Console.WriteLine("If you believe this is a bug, please file an issue at https://matrix.to/#/#merz-chat:matrix.org");
         }
@@ -623,85 +275,113 @@ namespace merz
 
             return x;
         }
+    }
 
-        static string GetConfigFilePath()
+    public static class ToolRegistry
+    {
+        private static readonly string ConfigFileName = "merz-config.json";
+
+        public static List<EntryPoint> DiscoverAndFilterTools()
         {
-            // 2. Simplify path logic: The config file should always be next to the running executable.
-            // This correctly places it in the versioned folder (e.g., ...\v1.4.3\merz-config.json).
-            string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            return Path.Combine(exeDirectory, ConfigFileName);
+            var allEntryPoints = new List<EntryPoint>();
+            Assembly mainAssembly = Assembly.GetExecutingAssembly();
+
+            // 1. Scan Main Assembly
+            allEntryPoints.AddRange(ScanAssemblyForEntryPoints(mainAssembly));
+
+            // 2. Scan Scripts.dll
+            string baseDirectory = Path.GetDirectoryName(mainAssembly.Location);
+            string scriptsDllPath = Path.Combine(baseDirectory, "Scripts.dll");
+
+            if (File.Exists(scriptsDllPath))
+            {
+                try
+                {
+                    Assembly scriptsAssembly = Assembly.LoadFrom(scriptsDllPath);
+                    allEntryPoints.AddRange(ScanAssemblyForEntryPoints(scriptsAssembly));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Could not load Scripts.dll from {scriptsDllPath}. Error: {ex.Message}");
+                }
+            }
+
+            // Remove duplicates
+            var uniqueEntryPoints = allEntryPoints
+                .GroupBy(ep => $"{ep.group}_{ep.name}_{ep.subname}")
+                .Select(g => g.First())
+                .ToList();
+
+            // 3. Load CI/CD generated config as a read-only manifest
+            var config = LoadManifest(baseDirectory);
+            var enabledTools = config.Tools.Where(t => t.Enabled).ToList();
+
+            // If no config exists, everything is enabled by default.
+            if (!enabledTools.Any() && config.Tools.Count == 0)
+            {
+                return uniqueEntryPoints;
+            }
+
+            // 4. Filter
+            var filteredEntryPoints = uniqueEntryPoints.Where(ep =>
+            {
+                return enabledTools.Any(tool => 
+                    tool.Group == ep.group && 
+                    tool.Name == ep.name && 
+                    (tool.Sub ?? "") == (ep.subname ?? ""));
+            }).ToList();
+
+            return filteredEntryPoints;
         }
 
-        static MerzConfig LoadConfig()
+        private static IEnumerable<EntryPoint> ScanAssemblyForEntryPoints(Assembly assembly)
         {
-            string configPath = GetConfigFilePath();
-            LogDebug($"Looking for config file at: {configPath}");
+            if (assembly == null) return Enumerable.Empty<EntryPoint>();
+
+            try
+            {
+                var types = assembly.GetTypes();
+                return types
+                    .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                    .Where(m => m.GetCustomAttribute(typeof(PackAttribute), false) != null)
+                    .Select(m => EntryPoint.FromAttrMethod(m));
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                Console.WriteLine($"Error: Could not load one or more types from assembly ({assembly.FullName}).");
+                if (ex.LoaderExceptions != null)
+                {
+                    foreach (Exception loaderEx in ex.LoaderExceptions)
+                    {
+                        Console.WriteLine($"- LoaderException: {loaderEx?.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An unexpected error occurred while processing types from assembly ({assembly.FullName}): {ex.Message}");
+            }
+            return Enumerable.Empty<EntryPoint>();
+        }
+
+        private static MerzConfig LoadManifest(string baseDirectory)
+        {
+            string configPath = Path.Combine(baseDirectory, ConfigFileName);
             
             if (!File.Exists(configPath))
             {
-                LogDebug("Config file not found, using default behavior (all tools enabled)");
                 return new MerzConfig();
             }
 
             try
             {
                 string jsonContent = File.ReadAllText(configPath);
-                LogDebug($"Loading config file from: {configPath}");
-                // 3. Use Newtonsoft.Json for deserialization
-                var config = JsonConvert.DeserializeObject<MerzConfig>(jsonContent) ?? new MerzConfig();
-                LogDebug($"Loaded {config.Tools.Count} tool configurations");
-                return config;
+                return JsonConvert.DeserializeObject<MerzConfig>(jsonContent) ?? new MerzConfig();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                LogDebug($"Warning: Could not load config file {configPath}. Error: {ex.Message}");
                 return new MerzConfig();
             }
-        }
-
-        static void SaveConfig(MerzConfig config)
-        {
-            try
-            {
-                string configPath = GetConfigFilePath();
-                // 4. Ensure the specific directory for the config file exists.
-                string configDirectory = Path.GetDirectoryName(configPath);
-                Directory.CreateDirectory(configDirectory);
-                
-                // 5. Use Newtonsoft.Json for serialization
-                string jsonContent = JsonConvert.SerializeObject(config, Formatting.Indented);
-                File.WriteAllText(configPath, jsonContent);
-                
-                LogDebug($"Config saved to: {configPath}");
-            }
-            catch (Exception ex)
-            {
-                LogDebug($"Warning: Could not save config file. Error: {ex.Message}");
-            }
-        }
-
-        static void GenerateConfigFromDiscoveredTools(List<EntryPoint> allEntryPoints)
-        {
-            var config = LoadConfig();
-            var existingTools = config.Tools.ToDictionary(t => $"{t.Group}_{t.Name}_{t.Sub}", t => t);
-            
-            foreach (var ep in allEntryPoints)
-            {
-                string key = $"{ep.group}_{ep.name}_{ep.subname}";
-                
-                if (!existingTools.ContainsKey(key))
-                {
-                    config.Tools.Add(new ToolConfig
-                    {
-                        Group = ep.group,
-                        Name = ep.name,
-                        Sub = ep.subname,
-                        Enabled = true
-                    });
-                }
-            }
-            
-            SaveConfig(config);
         }
     }
 
@@ -712,6 +392,7 @@ namespace merz
         public string subname;
         public Action invoke;
         public bool runInSeparateThread;
+        
         private EntryPoint()
         {
             group = "";
@@ -732,6 +413,7 @@ namespace merz
             };
         }
     }
+
     class LastRun
     {
         public EntryPoint ep;
@@ -749,6 +431,5 @@ namespace merz
     public class MerzConfig
     {
         public List<ToolConfig> Tools { get; set; } = new List<ToolConfig>();
-        public DateTime? LastVersionCheck { get; set; }
     }
 }

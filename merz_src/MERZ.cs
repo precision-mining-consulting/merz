@@ -39,14 +39,17 @@ public class Merz
             var sortedDirs = versionDirs
                 .Select(dir => {
                     string dirName = Path.GetFileName(dir);
-
                     string versionStr = dirName.TrimStart('v');
+                    
+                    // Handle suffixes like -beta by only parsing the numeric part for comparison
+                    string parsable = versionStr.Split('-')[0];
                     Version version;
-                    Version.TryParse(versionStr, out version);
+                    Version.TryParse(parsable, out version);
 
-                    return new { Path = dir, Version = version };
+                    return new { Path = dir, Version = version, Raw = dirName };
                 })
                 .OrderByDescending(x => x.Version)  // Sort by numeric version
+                .ThenByDescending(x => x.Raw)        // Then by raw name to handle sub-ordering
                 .Select(x => x.Path)
                 .ToArray();
 
