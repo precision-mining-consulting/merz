@@ -2,25 +2,49 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
     <PlatformTarget>x64</PlatformTarget>
 	<LangVersion>10.0</LangVersion>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Hosted inside Spry via ExecuteAssembly(merz.dll); never launched on its own. -->
+    <UseAppHost>false</UseAppHost>
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ScriptsProject>..\pm-spry-tools\.config\Scripts.csproj</ScriptsProject>
+    <ScriptsDll Condition="'$(ScriptsDll)' == ''">$(LOCALAPPDATA)\Programs\merz\v1.4.5\Scripts.dll</ScriptsDll>
+  </PropertyGroup>
+
   <ItemGroup>
+    <!-- Spry 25.5 net48 reference for both targets; on .NET 8 the runtime facade (SpryFacade.cs) serves this name. -->
     <Reference Include="Spry">
       <HintPath>Spry.exe</HintPath>
           <Private>False</Private>
     </Reference>
-    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Forms" Condition="'$(TargetFramework)' == 'net48'" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\pm-spry-tools\.config\Scripts.csproj" />
+  <ItemGroup Condition="Exists('$(ScriptsProject)')">
+    <ProjectReference Include="$(ScriptsProject)" />
+  </ItemGroup>
+
+  <!-- pm-spry-tools is private: fall back to a shipped Scripts.dll. -->
+  <ItemGroup Condition="!Exists('$(ScriptsProject)')">
+    <Reference Include="Scripts">
+      <HintPath>$(ScriptsDll)</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
     <PackageReference Include="System.Numerics.Vectors" Version="4.5.0">
       <!-- This assembly is part of .NET 4.8, prevent it from being copied to the output directory. -->
