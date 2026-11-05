@@ -18,16 +18,41 @@ namespace merz
         [STAThread]
         static void Main(string[] args)
         {
-            if (args.Contains("--debug"))
+#if NETFRAMEWORK
+            // Inside .NET 8 Spry this net48 build must not touch Spry types; hand off to the net8 build.
+            if (Environment.Version.Major >= 5)
+            {
+                HandOffToNet8(args);
+                return;
+            }
+#else
+            if (!MerzLoadContext.IsHosted(typeof(Program).Assembly))
+            {
+                MerzLoadContext.Run(typeof(Program).Assembly, args);
+                return;
+            }
+#endif
+            if (args.Contains("--debug") || Environment.GetEnvironmentVariable("MERZ_DEBUG") == "1")
             {
                 IsDebugMode = true;
             }
 
-            try 
+            try
             {
                 BringInSpry();
+#if NET
+                if (IsDebugMode || args.Contains("check"))
+                    CheckReferences();
+#endif
 
-                if (args.Contains("run-last"))
+                if (args.Contains("check"))
+                {
+                    var tools = ToolRegistry.DiscoverAndFilterTools();
+                    Console.WriteLine("merz check: " + tools.Count + " tools discovered");
+                    foreach (var t in tools)
+                        Console.WriteLine("  " + t.group + " | " + t.name + " | " + t.subname);
+                }
+                else if (args.Contains("run-last"))
                     RunLast();
                 else
                     RunOpen();
@@ -91,7 +116,10 @@ namespace merz
             Assembly assembly = Assembly.GetExecutingAssembly();
             string assemblyPath = assembly.Location;
 
-            string version = new DirectoryInfo(Path.GetDirectoryName(assemblyPath)).Name;
+            var dir = new DirectoryInfo(Path.GetDirectoryName(assemblyPath));
+            if (dir.Name == "net8")
+                dir = dir.Parent;
+            string version = dir.Name;
 
             if (version.StartsWith("v"))
             {
@@ -108,12 +136,43 @@ namespace merz
             EntryPointForm(entryPoints);
         }
 
+#if NET
+        // Kept out of Main: Main also runs in the unhosted copy, whose JIT cannot resolve Scripts.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        static void CheckReferences()
+        {
+            MerzLoadContext.ResolveAllReferences(typeof(Program).Assembly, typeof(PackAttribute).Assembly);
+        }
+#endif
+
+#if NETFRAMEWORK
+        static void HandOffToNet8(string[] args)
+        {
+            var net8 = Path.Combine(Path.GetDirectoryName(typeof(Program).Assembly.Location), "net8", "merz.dll");
+            if (!File.Exists(net8))
+            {
+                Console.WriteLine("[ERROR]: This Spry runs on .NET 8 but the merz .NET 8 build was not found at '" + net8 + "'.");
+                return;
+            }
+            AppDomain.CurrentDomain.ExecuteAssembly(net8, args);
+        }
+#endif
+
         static void BringInSpry(string version = null)
         {
-            var spry = Assembly.GetEntryAssembly()?.Location;
-            if (spry == null || !File.Exists(spry) || !(spry.EndsWith("Spry.exe") || spry.EndsWith("SpryBeta.exe") || spry.EndsWith("SpryAlpha.exe")))
+            var msg = "[ERROR]: Could not find a Spry installation, is this being run through Spry?";
+#if NET
+            // The MerzLoadContext resolves "Spry" (via the facade) and Scripts; no AssemblyResolve hook needed.
+            if (MerzLoadContext.Host == null)
             {
-                var msg = "[ERROR]: Could not find a Spry installation, is this being run through Spry?";
+                Console.WriteLine(msg);
+                throw new Exception(msg);
+            }
+#else
+            var spry = Assembly.GetEntryAssembly()?.Location;
+            var file = spry == null ? "" : Path.GetFileName(spry);
+            if (!File.Exists(spry) || !file.StartsWith("Spry", StringComparison.OrdinalIgnoreCase) || !file.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            {
                 Console.WriteLine(msg);
                 throw new Exception(msg);
             }
@@ -125,6 +184,7 @@ namespace merz
 
                 return null;
             };
+#endif
         }
 
         static void EntryPointForm(List<EntryPoint> entryPoints)
@@ -289,21 +349,19 @@ namespace merz
             // 1. Scan Main Assembly
             allEntryPoints.AddRange(ScanAssemblyForEntryPoints(mainAssembly));
 
-            // 2. Scan Scripts.dll
+            // 2. Scan Scripts.dll. Use the instance merz is bound to: a second Assembly.LoadFrom copy has a
+            //    different PackAttribute identity on .NET 8 and would yield no tools.
             string baseDirectory = Path.GetDirectoryName(mainAssembly.Location);
-            string scriptsDllPath = Path.Combine(baseDirectory, "Scripts.dll");
-
-            if (File.Exists(scriptsDllPath))
+            try
             {
-                try
-                {
-                    Assembly scriptsAssembly = Assembly.LoadFrom(scriptsDllPath);
+                Assembly scriptsAssembly = typeof(PackAttribute).Assembly;
+                baseDirectory = Path.GetDirectoryName(scriptsAssembly.Location);
+                if (scriptsAssembly != mainAssembly)
                     allEntryPoints.AddRange(ScanAssemblyForEntryPoints(scriptsAssembly));
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Warning: Could not load Scripts.dll from {scriptsDllPath}. Error: {ex.Message}");
-                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Could not load Scripts.dll. Error: {ex.Message}");
             }
 
             // Remove duplicates
