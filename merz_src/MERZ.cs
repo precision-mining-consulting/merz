@@ -27,6 +27,11 @@ using System.Linq;
 public class Merz
 {
     #endregion
+
+    // .NET 8 Spry: merz is built as a managed merz.dll (no native apphost).
+    // merz.exe is kept as a fallback for older .NET Framework builds.
+    static readonly string[] BinaryNames = { "merz.dll", "merz.exe" };
+
     static string location()
     {
         string basePath = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData) + @"\Programs\merz";
@@ -40,7 +45,7 @@ public class Merz
                 .Select(dir => {
                     string dirName = Path.GetFileName(dir);
                     string versionStr = dirName.TrimStart('v');
-                    
+
                     // Handle suffixes like -beta by only parsing the numeric part for comparison
                     string parsable = versionStr.Split('-')[0];
                     Version version;
@@ -75,18 +80,28 @@ public class Merz
         Merz_.GetDomain().ExecuteAssembly(findPath(), a);
     }
 
+    static string findInDir(string dir)
+    {
+        foreach (var name in BinaryNames)
+        {
+            string bin = Path.Combine(dir, name);
+            if (File.Exists(bin))
+                return bin;
+        }
+        return null;
+    }
+
     static string findPath()
     {
-        string versionDir = location();
-        string bin = Path.Combine(versionDir, "merz.exe");
+        string bin = findInDir(location());
 
-        if (!File.Exists(bin))
+        if (bin == null)
         {
             string basePath = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData) + @"\Programs\merz";
-            bin = Path.Combine(basePath, "merz.exe");
+            bin = findInDir(basePath);
 
-            if (!File.Exists(bin))
-                throw new System.Exception("Could not find the merz program at '" + bin + "'. If merz was installed elsewhere, please update the location variable.");
+            if (bin == null)
+                throw new System.Exception("Could not find the merz program (merz.dll) in '" + basePath + "'. If merz was installed elsewhere, please update the location variable.");
         }
         return bin;
     }

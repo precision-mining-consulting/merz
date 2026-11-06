@@ -18,7 +18,23 @@ namespace merz
         [STAThread]
         static void Main(string[] args)
         {
-            if (args.Contains("--debug"))
+            // Spry loads this assembly with AppDomain.ExecuteAssembly. Re-run the entry point from a copy loaded into
+            // this install's own collectible context (MerzLoadContext), so a newly installed version and its
+            // Scripts.dll are picked up without restarting Spry.
+            if (!MerzLoadContext.IsHosted(typeof(Program).Assembly))
+            {
+                MerzLoadContext.Run(typeof(Program).Assembly, args);
+                return;
+            }
+
+            RunHosted(args);
+        }
+
+        // Kept out of Main: the outer (unhosted) copy also JIT-compiles Main and can't resolve Spry or Scripts types.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        static void RunHosted(string[] args)
+        {
+            if (args.Contains("--debug") || Environment.GetEnvironmentVariable("MERZ_DEBUG") == "1")
             {
                 IsDebugMode = true;
             }
@@ -27,7 +43,15 @@ namespace merz
             {
                 BringInSpry();
 
-                if (args.Contains("run-last"))
+                if (args.Contains("check"))
+                {
+                    // Lists the discovered tools without opening the menu (for verifying an install).
+                    var tools = ToolRegistry.DiscoverAndFilterTools();
+                    Console.WriteLine("merz " + GetCurrentVersion() + " check: " + tools.Count + " tools discovered");
+                    foreach (var t in tools.OrderBy(t => t.group).ThenBy(t => t.name).ThenBy(t => t.subname))
+                        Console.WriteLine("  " + t.group + " | " + t.name + (string.IsNullOrEmpty(t.subname) ? "" : " | " + t.subname));
+                }
+                else if (args.Contains("run-last"))
                     RunLast();
                 else
                     RunOpen();
@@ -50,8 +74,11 @@ namespace merz
         {
             try
             {
-                // This remains a reflection hack for compatibility with Spry's CustomProgress
-                foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
+                // This remains a reflection hack for compatibility with Spry's CustomProgress.
+                // Check this version's Scripts.dll first: older merz versions may still be loaded in the process.
+                var candidates = new[] { typeof(PackAttribute).Assembly }
+                    .Concat(AppDomain.CurrentDomain.GetAssemblies());
+                foreach (Assembly asm in candidates)
                 {
                     Type type = asm.GetType("PrecisionMining.Spry.Util.UI.CustomProgress");
                     if (type != null)
@@ -108,23 +135,25 @@ namespace merz
             EntryPointForm(entryPoints);
         }
 
-        static void BringInSpry(string version = null)
+        static void BringInSpry()
         {
-            var spry = Assembly.GetEntryAssembly()?.Location;
-            if (spry == null || !File.Exists(spry) || !(spry.EndsWith("Spry.exe") || spry.EndsWith("SpryBeta.exe") || spry.EndsWith("SpryAlpha.exe")))
+            // .NET 8 Spry: Spry.exe is a native launcher and Spry's code is in Spry.dll (or SpryBeta/SpryAlpha.dll),
+            // so look for the loaded assembly by name, not for a "Spry.exe" path.
+            // Resolving "Spry", Scripts.dll and the rest is done by MerzLoadContext, so no AssemblyResolve hook here
+            // (a process-wide hook would also keep old merz versions from being unloaded).
+            var spryAssembly = MerzLoadContext.Host;
+
+            if (spryAssembly == null)
             {
                 var msg = "[ERROR]: Could not find a Spry installation, is this being run through Spry?";
                 Console.WriteLine(msg);
+                LogDebug("Entry assembly: " + (Assembly.GetEntryAssembly()?.Location ?? "<none>"));
                 throw new Exception(msg);
             }
 
-            AppDomain.CurrentDomain.AssemblyResolve += (o, e) =>
-            {
-                if (new AssemblyName(e.Name).Name == "Spry")
-                    return Assembly.LoadFrom(spry);
-
-                return null;
-            };
+            LogDebug("Using Spry assembly: " + spryAssembly.Location);
+            LogDebug("merz context: " + System.Runtime.Loader.AssemblyLoadContext.GetLoadContext(typeof(Program).Assembly)?.Name);
+            LogDebug("Scripts.dll: " + typeof(PackAttribute).Assembly.Location);
         }
 
         static void EntryPointForm(List<EntryPoint> entryPoints)
@@ -289,22 +318,13 @@ namespace merz
             // 1. Scan Main Assembly
             allEntryPoints.AddRange(ScanAssemblyForEntryPoints(mainAssembly));
 
-            // 2. Scan Scripts.dll
+            // 2. Scan Scripts.dll: the copy merz itself is bound to (from this install's MerzLoadContext).
+            //    Don't Assembly.LoadFrom it again: a second copy would have a different PackAttribute type and
+            //    yield no tools, or fail with "Assembly with same name is already loaded".
             string baseDirectory = Path.GetDirectoryName(mainAssembly.Location);
-            string scriptsDllPath = Path.Combine(baseDirectory, "Scripts.dll");
-
-            if (File.Exists(scriptsDllPath))
-            {
-                try
-                {
-                    Assembly scriptsAssembly = Assembly.LoadFrom(scriptsDllPath);
-                    allEntryPoints.AddRange(ScanAssemblyForEntryPoints(scriptsAssembly));
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Warning: Could not load Scripts.dll from {scriptsDllPath}. Error: {ex.Message}");
-                }
-            }
+            Assembly scriptsAssembly = GetScriptsAssembly();
+            if (scriptsAssembly != null && scriptsAssembly != mainAssembly)
+                allEntryPoints.AddRange(ScanAssemblyForEntryPoints(scriptsAssembly));
 
             // Remove duplicates
             var uniqueEntryPoints = allEntryPoints
@@ -332,6 +352,21 @@ namespace merz
             }).ToList();
 
             return filteredEntryPoints;
+        }
+
+        // Separate method so a missing Scripts.dll is caught here, not when DiscoverAndFilterTools is JIT-compiled.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static Assembly GetScriptsAssembly()
+        {
+            try
+            {
+                return typeof(PackAttribute).Assembly;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Could not load Scripts.dll. Error: {ex.Message}");
+                return null;
+            }
         }
 
         private static IEnumerable<EntryPoint> ScanAssemblyForEntryPoints(Assembly assembly)

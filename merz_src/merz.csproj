@@ -2,17 +2,34 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net48</TargetFramework>
+    <!-- Spry is now a self-contained .NET 8 (WindowsDesktop) application. merz is loaded into Spry's
+         process via MERZ.cs (AppDomain.ExecuteAssembly), so it must target the same runtime. -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
     <PlatformTarget>x64</PlatformTarget>
-	<LangVersion>10.0</LangVersion>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- No native merz.exe launcher: Spry loads the managed merz.dll directly. -->
+    <UseAppHost>false</UseAppHost>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- merz_src also holds the old .NET Framework Spry (25.5.2083\, Spry.exe), tooling and release output.
+         Keep them out of the project, otherwise their DLLs become candidate references (e.g. old DevExpress v24.2)
+         and cause MSB3277 version-conflict warnings. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);25.5.2083\**;releases\**;target\**;Microsoft.Trusted.Signing.Client\**;Microsoft.Windows.SDK.BuildTools\**;*.exe;*.7z</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Folder that contains the .NET 8 Spry.dll. Defaults to the per-user Spry install.
+         Override in CI with:  dotnet build -p:SpryDir=path\to\spry  -->
+    <SpryDir Condition="'$(SpryDir)' == ''">$(LOCALAPPDATA)\Spry\current</SpryDir>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="Spry">
-      <HintPath>Spry.exe</HintPath>
-          <Private>False</Private>
+      <HintPath>$(SpryDir)\Spry.dll</HintPath>
+      <Private>False</Private>
     </Reference>
-    <Reference Include="System.Windows.Forms" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,14 +37,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Spry already ships Newtonsoft.Json 13.x and it will be bound from Spry's folder at runtime. -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0">
-      <!-- This assembly is part of .NET 4.8, prevent it from being copied to the output directory. -->
-      <Private>False</Private>
-    </PackageReference>
-    <PackageReference Include="System.Memory" Version="4.5.5" />
-    <PackageReference Include="System.Text.Json" Version="9.0.5" />
+    <!-- Spry 27.x is built against System.Drawing.Common 10.0 (newer than the WindowsDesktop 8.0 copy).
+         Compile against 10.0; at runtime Spry's own copy is used. -->
+    <PackageReference Include="System.Drawing.Common" Version="10.0.0" ExcludeAssets="runtime" />
+    <!-- System.Net.Http / System.Memory / System.Numerics.Vectors / System.Text.Json are part of .NET 8. -->
   </ItemGroup>
+
+  <Target Name="CheckSpryReference" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(SpryDir)\Spry.dll')"
+           Text="Spry.dll (.NET 8) not found in '$(SpryDir)'. Install Spry or pass -p:SpryDir=&lt;folder containing Spry.dll&gt;." />
+  </Target>
 
 </Project>
